@@ -1,1 +1,1 @@
-# Equipo-PP1---Cl-nica-San-Jorge---2C-2024
+# Equipo PP1 - Clínica San Jorge - 2C 2024
