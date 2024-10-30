@@ -12,15 +12,15 @@ import sqlite3
 
 # %% Apertura de la base
 
-'''
-# Lenovo
-os.chdir("C:\\Users\\pablo\\OneDrive\\Tecnicatura Cs datos e IA\\"
-         "2do cuatri\\Practica I\\Practica San Jorge\\Datos San Jorge")
-'''
-# Acer
+# Define the path as a variable for better readability and maintainability
+root_dir = "C:\\Users\\Usuario\\OneDrive\\Tecnicatura Cs datos e IA\\"
+project_dir = "2do cuatri\\Practica I\\Práctica San Jorge\\Python San Jorge\\Equipo_PP1-Clinica_San_Jorge-2C-2024"
 
-os.chdir("C:\\Users\\Usuario\\OneDrive\\Tecnicatura Cs datos e IA\\"
-         "2do cuatri\\Practica I\\Práctica San Jorge\\Python San Jorge")
+# Use os.path.join to ensure the correct path separator is used
+path = os.path.join(root_dir, project_dir)
+
+# Change the directory
+os.chdir(path)
 
 base_original = 'ausentismo 22 a hoy.xlsx'
 
