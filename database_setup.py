@@ -27,13 +27,12 @@ def abrir_excel(ruta):
 
 def crear_base():
     conn = sqlite3.connect('Ausencias_SJ.db')
+    cur = conn.cursor()
     
     # Habilitar claves foráneas
     conn.execute("PRAGMA foreign_keys = ON")
 
-    cur = conn.cursor()
-
-    # Crear tabla de agrupadores
+        # Crear tabla de agrupadores
     cur.execute('''CREATE TABLE IF NOT EXISTS agrupadores
                 (id_agr        INTEGER PRIMARY KEY,
                  agrupador     TEXT            NOT NULL
@@ -84,6 +83,7 @@ def abrir_bd():
     global cur
     conn = sqlite3.connect('Ausencias_SJ.db')
     cur = conn.cursor()
+    return conn, cur
 
 
 def cerrar_bd():
@@ -120,26 +120,29 @@ def limpieza_db(ruta):
                                             dayfirst=True, errors='coerce')
 
     # Eliminar la columna de fecha de fin de certificado
-    base_df_2 = base_df.drop('Validez_Hasta', axis=1)
+    base_df= base_df.drop('Validez_Hasta', axis=1)
 
     # Eliminar filas con NaN en nro legajo o en fecha
-    base_df_limpia = base_df_2.dropna(
-        subset=[base_df_2.columns[3], base_df_2.columns[9]])
+    base_df = base_df.dropna(
+        subset=[base_df.columns[3], base_df.columns[9]])
+    
+    # Eliminar certificados de duracion menor a 1 (dias)
+    base_df = base_df[base_df['Dias'] >= 1]
 
     # Convertir la columna "Validez_Desde" a un formato correcto para SQL
-    base_df_limpia['Validez_desde'] = pd.to_datetime(
-        base_df_limpia['Validez_Desde']).dt.date
-    return base_df_limpia
+    base_df['Validez_desde'] = pd.to_datetime(
+        base_df['Validez_Desde']).dt.date
+    return base_df
 
 # %% Agregado de columnas de ID
 def agregar_ID(ruta):
     base_df_limpia = limpieza_db(ruta)
     # Agregar ID_TC (ID para cada tipo de certificado).
-    base_df_limpia['ID_TC'] = pd.factorize(base_df_limpia['TCDetalle'])[0]
+    base_df_limpia.loc[:, 'ID_TC'] = pd.factorize(base_df_limpia['TCDetalle'])[0]
     # Agregar ID_Dep (ID para cada departamento)
-    base_df_limpia['ID_Dep'] = pd.factorize(base_df_limpia['Departamento'])[0]
+    base_df_limpia.loc[:, 'ID_Dep'] = pd.factorize(base_df_limpia['Departamento'])[0]
     # Agregar ID_Agr (ID para cada tipo de agrupador)
-    base_df_limpia['ID_Agr'] = pd.factorize(base_df_limpia['Agrupador'])[0]
+    base_df_limpia.loc[:, 'ID_Agr'] = pd.factorize(base_df_limpia['Agrupador'])[0]
     return  base_df_limpia
 
 

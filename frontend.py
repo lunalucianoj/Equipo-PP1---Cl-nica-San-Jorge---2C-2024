@@ -8,13 +8,14 @@ Front end para la visualizacion de graficos realizado para el area de RRHH
 de la Clinica San Jorge (Ushuaia)
 """
 # %% Importaciones
-import os
+import graficos
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import utils
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from collections import Counter
 from database_setup import crear_db
@@ -47,9 +48,7 @@ class VentanaPrincipal(tk.Tk):
         # Marco para los graficos
         self.fr_graficos = tk.Frame(self, bg=color_fondo, height=400)
         self.fr_graficos.pack(side="top", fill="x")
-        self.la_falta_tabla = tk.Label(
-            self.fr_graficos, text='Por favor cargue la tabla con' +
-            ' los certificados')
+
 
         # Marco para los seleccionadores
         self.fr_selec = tk.Frame(self, bg = color_fondo, height=400)
@@ -123,7 +122,7 @@ class VentanaPrincipal(tk.Tk):
         self.rb2_fr1.grid(row=3, column=0, sticky="w")
         self.rb3_fr1.grid(row=4, column=0, sticky="w")
 
-    # Funciones
+    # %% Funciones
 
     def cargar_certif(self):
         '''Abre un menu para buscar en los archivos la tabla que se desea
@@ -139,7 +138,7 @@ class VentanaPrincipal(tk.Tk):
         self.limpiar_base()
         self.la_falta_tabla.forget()
         '''
-        crear_db(self, ruta_tabla)
+        crear_db(ruta_tabla)
 
     def crear_graf_total(self, frec=0):
         lista_fechas = []
@@ -164,7 +163,7 @@ class VentanaPrincipal(tk.Tk):
         self.config(menu=self.menu_base)
 
     def distribuidor_frame_0(self):
-        '''Asigna la fucnion correcta segun la eleccion en el frame de la
+        '''Asigna la funcion correcta segun la eleccion en el frame de la
         izquierda'''
         if self.var_fr0.get() == 1:
             self.opciones_frecuencia(1)
@@ -197,43 +196,21 @@ class VentanaPrincipal(tk.Tk):
         self.tabla_SJ = self.tabla_SJ[self.tabla_SJ["Dias"] > 0]
 
     def mostrar_grafico(self, frec):
-        lista_fechas = self.crear_graf_total()
-        # Aplanar la lista de listas y contar las apariciones de cada fecha
-        fechas_planas = [fecha for sublista in
-                         lista_fechas for fecha in sublista]
-        conteo_fechas = Counter(fechas_planas)
-
-        # Crear DataFrame para ordenar y graficar
-        df_conteo_fechas = pd.DataFrame(conteo_fechas.items(),
-                                        columns=['Fecha', 'Frecuencia'])
-        df_conteo_fechas = df_conteo_fechas.sort_values('Fecha')
-
-        # Crear figura de Matplotlib
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(df_conteo_fechas['Fecha'], df_conteo_fechas['Frecuencia'],
-                marker='o', linestyle='-', color='skyblue')
-        ax.set_xlabel('Fecha')
-        ax.set_ylabel('Cantidad de ausencias')
-        ax.set_title('Ausencias por fecha')
-        plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-        # Personalizar las etiquetas del eje x
-        plt.xticks(rotation=45)
-        plt.tight_layout()
+        figura = graficos.aus_simple_tiempo()
 
         # Limpiar el frame y mostrar el gráfico
         for widget in self.fr_graficos.winfo_children():
             widget.destroy()
    
         # Convertir figura a un Canvas de Tkinter y empaquetarlo en el frame
-        canvas = FigureCanvasTkAgg(fig, master=self.fr_graficos)
+        canvas = FigureCanvasTkAgg(figura, master=self.fr_graficos)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def opciones_frecuencia(self, mostrar):
-        if mostrar == 1:
-            self.fr_selec_1b.pack()
-        else:
+       if mostrar == 1:
+           self.fr_selec_1b.pack()
+       else:
             self.fr_selec_1b.forget()
 
     def set_icon(self):
@@ -241,5 +218,17 @@ class VentanaPrincipal(tk.Tk):
         self.icon_image = tk.PhotoImage(file=logo)
         self.iconphoto(False, self.icon_image)
 
+
+# %% Funciones de labels
+
+def la_cargue_excel():
+    self.la_falta_excel = tk.Label(
+    self.fr_graficos, text='Por favor cargue la tabla de Excel con' +
+    ' los certificados')
+    dir = utils.ver_directorio_actual
+    
+
+# %% Iniciar el bucle principal de la interfaz gráfica
+
     def run(self):
-        self.mainloop() # Inicia el bucle principal de la interfaz gráfica
+        self.mainloop() 
