@@ -13,20 +13,14 @@ import sqlite3
 # %% Apertura de la base
 
 # Define the path as a variable for better readability and maintainability
-root_dir = "C:\\Users\\Usuario\\OneDrive\\Tecnicatura Cs datos e IA\\"
-project_dir = "2do cuatri\\Practica I\\Práctica San Jorge\\Python San Jorge\\Equipo_PP1-Clinica_San_Jorge-2C-2024"
+
 
 # Use os.path.join to ensure the correct path separator is used
-path = os.path.join(root_dir, project_dir)
 
-# Change the directory
-os.chdir(path)
 
-base_original = 'ausentismo 22 a hoy.xlsx'
-
-# %% Separacion de datos para convertir base a SQL
-# Lectura de archivo excel
-base_df = pd.read_excel(base_original)
+def abrir_excel(ruta):
+    base_df = pd.read_excel(ruta)
+    return base_df
 
 # %% Creacion de base de datos SQL
 
@@ -85,9 +79,6 @@ def crear_base():
     conn.close()
 
 
-crear_base()
-
-
 def abrir_bd():
     global conn
     global cur
@@ -122,48 +113,57 @@ print(duplicados_certificado)
 
 # %% Limpieza de la base
 
-# Convertir las fechas al formato correcto
-base_df['Validez_Desde'] = pd.to_datetime(base_df['Validez_Desde'],
-                                          dayfirst=True, errors='coerce')
+def limpieza_db(ruta):
+    base_df = abrir_excel(ruta)
+    # Convertir las fechas al formato correcto
+    base_df['Validez_Desde'] = pd.to_datetime(base_df['Validez_Desde'],
+                                            dayfirst=True, errors='coerce')
 
-# Eliminar la columna de fecha de fin de certificado
-base_df_2 = base_df.drop('Validez_Hasta', axis=1)
+    # Eliminar la columna de fecha de fin de certificado
+    base_df_2 = base_df.drop('Validez_Hasta', axis=1)
 
-# Eliminar filas con NaN en nro legajo o en fecha
-base_df_limpia = base_df_2.dropna(
-    subset=[base_df_2.columns[3], base_df_2.columns[9]])
+    # Eliminar filas con NaN en nro legajo o en fecha
+    base_df_limpia = base_df_2.dropna(
+        subset=[base_df_2.columns[3], base_df_2.columns[9]])
 
-# Convertir la columna "Validez_Desde" a un formato correcto para SQL
-base_df_limpia['Validez_desde'] = pd.to_datetime(
-    base_df_limpia['Validez_Desde']).dt.date
+    # Convertir la columna "Validez_Desde" a un formato correcto para SQL
+    base_df_limpia['Validez_desde'] = pd.to_datetime(
+        base_df_limpia['Validez_Desde']).dt.date
+    return base_df_limpia
 
 # %% Agregado de columnas de ID
+def agregar_ID(ruta):
+    base_df_limpia = limpieza_db(ruta)
+    # Agregar ID_TC (ID para cada tipo de certificado).
+    base_df_limpia['ID_TC'] = pd.factorize(base_df_limpia['TCDetalle'])[0]
+    # Agregar ID_Dep (ID para cada departamento)
+    base_df_limpia['ID_Dep'] = pd.factorize(base_df_limpia['Departamento'])[0]
+    # Agregar ID_Agr (ID para cada tipo de agrupador)
+    base_df_limpia['ID_Agr'] = pd.factorize(base_df_limpia['Agrupador'])[0]
+    return  base_df_limpia
 
-# Agregar ID_TC (ID para cada tipo de certificado).
-base_df_limpia['ID_TC'] = pd.factorize(base_df_limpia['TCDetalle'])[0]
-# Agregar ID_Dep (ID para cada departamento)
-base_df_limpia['ID_Dep'] = pd.factorize(base_df_limpia['Departamento'])[0]
-# Agregar ID_Agr (ID para cada tipo de agrupador)
-base_df_limpia['ID_Agr'] = pd.factorize(base_df_limpia['Agrupador'])[0]
 
 # %% Dividir la tabla en sub tablas para SQL
 
 # Tabla T_TCD (Detalle de tipo de certificado)
-T_TCD = base_df_limpia[['ID_TC', 'TCDetalle', 'ID_Agr']].drop_duplicates()
-# Tabla T_Dep (Departamentos)
-T_Dep = base_df_limpia[['ID_Dep', 'Departamento']].drop_duplicates()
-# Tabla T_Agr (Agrupadores)
-T_Agr = base_df_limpia[['ID_Agr', 'Agrupador']].drop_duplicates()
-# Tabla T_Emp (Empleados)
-T_Emp = base_df_limpia[['Numero_Legajo', 'Nombre', 'ID_Dep']].drop_duplicates()
-# Tabla T_Cer (Certificados, tabla central)
-T_Cer = base_df_limpia[['Numero_Certificado', 'ID_TC', 'Numero_Legajo',
-                        'Validez_desde', 'Dias', 'Descripcion',
-                        'Observacion_General']].drop_duplicates()
+def dividir_tabla(ruta):
+    base_df_limpia = agregar_ID(ruta)
+    T_TCD = base_df_limpia[['ID_TC', 'TCDetalle', 'ID_Agr']].drop_duplicates()
+    # Tabla T_Dep (Departamentos)
+    T_Dep = base_df_limpia[['ID_Dep', 'Departamento']].drop_duplicates()
+    # Tabla T_Agr (Agrupadores)
+    T_Agr = base_df_limpia[['ID_Agr', 'Agrupador']].drop_duplicates()
+    # Tabla T_Emp (Empleados)
+    T_Emp = base_df_limpia[['Numero_Legajo', 'Nombre', 'ID_Dep']].drop_duplicates()
+    # Tabla T_Cer (Certificados, tabla central)
+    T_Cer = base_df_limpia[['Numero_Certificado', 'ID_TC', 'Numero_Legajo',
+                            'Validez_desde', 'Dias', 'Descripcion',
+                            'Observacion_General']].drop_duplicates()
 
-listado_databases = ((T_TCD, 'TCD'), (T_Dep, 'departamentos'),
-                     (T_Agr, 'agrupadores'), (T_Emp, 'empleados'),
-                     (T_Cer, 'certificados'))
+    listado_databases = ((T_TCD, 'TCD'), (T_Dep, 'departamentos'),
+                        (T_Agr, 'agrupadores'), (T_Emp, 'empleados'),
+                        (T_Cer, 'certificados'))
+    return listado_databases
 # %% Cargar los sub data frames en SQLITE
 
 
@@ -180,9 +180,10 @@ def cargar_df_en_db(dataf, tablaSQL):
     conn.executemany(query, valores)
     cerrar_bd()
 
-
-for tabla in listado_databases:
-    cargar_df_en_db(tabla[0], tabla[1])
+def pasar_a_db(ruta):
+    listado_databases = dividir_tabla(ruta)
+    for tabla in listado_databases:
+        cargar_df_en_db(tabla[0], tabla[1])
 
 
 # %% Contar las faltas por dia de la semana
@@ -205,3 +206,8 @@ df_con_dias = pd.concat([df, conteo_dias.set_axis(dias_semana, axis=1)], axis=1)
 
 df_con_dias.to_csv('ausencias_por_día.csv', index=False, sep = ';')
 '''
+
+def crear_db(ruta):
+    crear_base()
+    pasar_a_db(ruta)
+    

@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from collections import Counter
+from database_setup import crear_db
 
 # %% Graficos institucionales
 
@@ -28,46 +29,40 @@ logo = 'Logo_clinica_san_jorge_chico.png'
 # %% Ventana principal
 
 class VentanaPrincipal(tk.Tk):
-    def __init__(self,):
+    def __init__(self):
         super().__init__()
+
+        # Configurar la ventana principal
         self.state('zoomed')  # ventana maximizada
         self.title('Análisis de ausencias Clínica San Jorge')
         self['bg'] = color_fondo
         try:
-            self.set_icon()
+            selfset_icon()
         except:
             pass
 
-    # Menu para agregar bases de datos
-        self.menu_base = tk.Menu(self)
-        self.menu_nuevo = tk.Menu(self.menu_base, tearoff=0)
-        self.menu_nuevo.add_command(
-            label='Agregar tabla certificados', command=self.cargar_certif)
-        self.menu_nuevo.add_command(
-            label='Agregar tabla empleados')#, command=self.Operador_nuevo)
-        self.menu_base.add_cascade(label='Agregar datos', menu=self.menu_nuevo)
-        self.config(menu=self.menu_base)
+        # Crear el menu para agregar bases de datos
+        self.create_menu()
 
         # Marco para los graficos
-        self.fr_graficos = tk.Frame(self, bg="green", height=400)
+        self.fr_graficos = tk.Frame(self, bg=color_fondo, height=400)
         self.fr_graficos.pack(side="top", fill="x")
         self.la_falta_tabla = tk.Label(
             self.fr_graficos, text='Por favor cargue la tabla con' +
             ' los certificados')
 
         # Marco para los seleccionadores
-        self.fr_selec = tk.Frame(self, bg="red", height=400)
+        self.fr_selec = tk.Frame(self, bg = color_fondo, height=400)
         self.fr_selec.pack(side="bottom", fill="x")
 
         # Marcos para los menus de seleccion
         ''' 4 menus consecutivos (0 a 3) de izquierda a derecha.
         El menu 2 solo aparece si es llamado del menu 1 y asi'''
         self.fr_selec.columnconfigure((0, 1, 2, 3), weight=1)
-        self.fr_selec_0 = tk.Frame(self.fr_selec, bg="darkblue",
-                                   height=400)
-        self.fr_selec_1 = tk.Frame(self.fr_selec, bg="darkgreen", height=400)
-        self.fr_selec_2 = tk.Frame(self.fr_selec, bg="purple", height=400)
-        self.fr_selec_3 = tk.Frame(self.fr_selec, bg="violet", height=400)
+        self.fr_selec_0 = tk.Frame(self.fr_selec,bg = color_fondo, height=400)
+        self.fr_selec_1 = tk.Frame(self.fr_selec, bg = color_fondo, height=400)
+        self.fr_selec_2 = tk.Frame(self.fr_selec, bg = color_fondo, height=400)
+        self.fr_selec_3 = tk.Frame(self.fr_selec, bg = color_fondo, height=400)
         self.fr_selec_0.grid(row=0, column=0, sticky="nsew")
         self.fr_selec_1.grid(row=0, column=1, sticky="nsew")
         self.fr_selec_2.grid(row=0, column=2, sticky="nsew")
@@ -129,16 +124,44 @@ class VentanaPrincipal(tk.Tk):
         self.rb3_fr1.grid(row=4, column=0, sticky="w")
 
     # Funciones
-    def set_icon(self):
-        # Cargar el icono de la parte superior izquierda 
-        self.icon_image = tk.PhotoImage(file=logo)
-        self.iconphoto(False, self.icon_image)
 
-    def opciones_frecuencia(self, mostrar):
-        if mostrar == 1:
-            self.fr_selec_1b.pack()
-        else:
-            self.fr_selec_1b.forget()
+    def cargar_certif(self):
+        '''Abre un menu para buscar en los archivos la tabla que se desea
+        cargar. Carga la tabla en memoria como data frame de pandas'''
+        opciones = {
+            'title': 'Seleccionar archivo',
+            'filetypes': [('Achivos compatibles', '*.xlsx')]
+        }
+        ruta_tabla = fd.askopenfilename(**opciones)
+        self.focus()
+        '''
+        self.tabla_SJ1 = pd.read_excel(ruta_tabla)
+        self.limpiar_base()
+        self.la_falta_tabla.forget()
+        '''
+        crear_db(self, ruta_tabla)
+
+    def crear_graf_total(self, frec=0):
+        lista_fechas = []
+        # Iterar sobre las filas del DataFrame
+        for _, row in self.tabla_SJ.iterrows():
+            # Generar un rango de fechas
+            fechas_evento = pd.date_range(
+                start=row['Validez_Desde'], periods=row['Dias']).tolist()
+            # Añadir la lista de fechas a la lista principal
+            lista_fechas.append(fechas_evento)
+        return lista_fechas
+
+    def create_menu(self):
+        # Menu para agregar bases de datos
+        self.menu_base = tk.Menu(self)
+        self.menu_nuevo = tk.Menu(self.menu_base, tearoff=0)
+        self.menu_nuevo.add_command(
+            label='Agregar tabla certificados', command=self.cargar_certif)
+        self.menu_nuevo.add_command(
+            label='Agregar tabla empleados')
+        self.menu_base.add_cascade(label='Agregar datos', menu=self.menu_nuevo)
+        self.config(menu=self.menu_base)
 
     def distribuidor_frame_0(self):
         '''Asigna la fucnion correcta segun la eleccion en el frame de la
@@ -162,19 +185,6 @@ class VentanaPrincipal(tk.Tk):
             self.la_falta_tabla.forget()
             self.graf_1 = self.mostrar_grafico(self.var_fr1.get())
 
-    def cargar_certif(self):
-        '''Abre un menu para buscar en los archivos la tabla que se desea
-        cargar. Carga la tabla en memoria como data frame de pandas'''
-        opciones = {
-            'title': 'Seleccionar archivo',
-            'filetypes': [('Achivos compatibles', '*.xlsx')]
-        }
-        ruta_tabla = fd.askopenfilename(**opciones)
-        self.focus()
-        self.tabla_SJ1 = pd.read_excel(ruta_tabla)
-        self.limpiar_base()
-        self.la_falta_tabla.forget()
-
     def limpiar_base(self):
         # Eliminar la columna de fecha de fin de certificado
         self.tabla_SJ2 = self.tabla_SJ1.drop('Validez_Hasta', axis=1)
@@ -185,17 +195,6 @@ class VentanaPrincipal(tk.Tk):
 
         # Eliminar filas con dias negativos
         self.tabla_SJ = self.tabla_SJ[self.tabla_SJ["Dias"] > 0]
-
-    def crear_graf_total(self, frec=0):
-        lista_fechas = []
-        # Iterar sobre las filas del DataFrame
-        for _, row in self.tabla_SJ.iterrows():
-            # Generar un rango de fechas
-            fechas_evento = pd.date_range(
-                start=row['Validez_Desde'], periods=row['Dias']).tolist()
-            # Añadir la lista de fechas a la lista principal
-            lista_fechas.append(fechas_evento)
-        return lista_fechas
 
     def mostrar_grafico(self, frec):
         lista_fechas = self.crear_graf_total()
@@ -231,32 +230,16 @@ class VentanaPrincipal(tk.Tk):
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
-# %% Ventana contenedora del grafico
+    def opciones_frecuencia(self, mostrar):
+        if mostrar == 1:
+            self.fr_selec_1b.pack()
+        else:
+            self.fr_selec_1b.forget()
 
+    def set_icon(self):
+        # Cargar el icono de la parte superior izquierda 
+        self.icon_image = tk.PhotoImage(file=logo)
+        self.iconphoto(False, self.icon_image)
 
-class VentanaGrafico(tk.Frame):
-    def __init__(self, master):
-        super().__init__(master)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# %% Mostrar ventana principal
-
-
-if __name__ == '__main__':
-    VP = VentanaPrincipal()
-    VP.geometry("800x100")
-    VP.mainloop()
-
+    def run(self):
+        self.mainloop() # Inicia el bucle principal de la interfaz gráfica
