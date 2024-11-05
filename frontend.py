@@ -46,7 +46,7 @@ class VentanaPrincipal(tk.Tk):
         self.create_menu()
 
         # Marco para los graficos
-        self.fr_graficos = tk.Frame(self, bg=color_fondo, height=400)
+        self.fr_graficos = tk.Frame(self, bg=color_fondo, height=600)
         self.fr_graficos.pack(side="top", fill="x")
         # Indicar que falta base de datos
         self.la_falta_excel = tk.Label(
@@ -125,22 +125,17 @@ class VentanaPrincipal(tk.Tk):
         self.var_fr1 = tk.IntVar()
         self.rb0_fr1 = tk.Radiobutton(self.fr_selec_1b,
                                       text='Por día',
+                                      variable=self.var_fr1, value=0,
+                                      command=self.distribuidor_frame_1)
+        self.rb1_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes',
                                       variable=self.var_fr1, value=1,
                                       command=self.distribuidor_frame_1)
-        self.rb1_fr1 = tk.Radiobutton(self.fr_selec_1b,
-                                      text='Por semana',
+        self.rb2_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por trimestre',
                                       variable=self.var_fr1, value=2,
-                                      command=self.distribuidor_frame_1)
-        self.rb2_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes',
-                                      variable=self.var_fr1, value=3,
-                                      command=self.distribuidor_frame_1)
-        self.rb3_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por estación',
-                                      variable=self.var_fr1, value=4,
                                       command=self.distribuidor_frame_1)
         self.rb0_fr1.grid(row=1, column=0, sticky="w")
         self.rb1_fr1.grid(row=2, column=0, sticky="w")
         self.rb2_fr1.grid(row=3, column=0, sticky="w")
-        self.rb3_fr1.grid(row=4, column=0, sticky="w")
 
     def ver_selec_frec_graf(self, mostrar):
         if mostrar == 1:
@@ -166,17 +161,6 @@ class VentanaPrincipal(tk.Tk):
         '''
         crear_db(ruta_tabla)
         self.cartel_area_graf() # Para borrar el cartel si se carga una base de datos
-
-    def crear_graf_total(self, frec=0):
-        lista_fechas = []
-        # Iterar sobre las filas del DataFrame
-        for _, row in self.tabla_SJ.iterrows():
-            # Generar un rango de fechas
-            fechas_evento = pd.date_range(
-                start=row['Validez_Desde'], periods=row['Dias']).tolist()
-            # Añadir la lista de fechas a la lista principal
-            lista_fechas.append(fechas_evento)
-        return lista_fechas
 
     def create_menu(self):
         # Menu para agregar bases de datos
@@ -224,7 +208,9 @@ class VentanaPrincipal(tk.Tk):
         self.tabla_SJ = self.tabla_SJ[self.tabla_SJ["Dias"] > 0]
 
     def mostrar_grafico(self):
-        figura = graficos.aus_simple_tiempo()
+        frec = self.var_fr1.get()
+        if self.var_fr0.get() == 0:
+            figura = graficos.aus_simple_tiempo(frec)
 
         # Limpiar el frame y mostrar el gráfico
         for widget in self.fr_graficos.winfo_children():

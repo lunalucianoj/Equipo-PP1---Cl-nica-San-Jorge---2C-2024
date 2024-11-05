@@ -2,38 +2,75 @@
 solicitados en el frontend'''
 
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import pandas as pd
-from collections import defaultdict
+from collections import Counter
 from database_setup import abrir_bd, cerrar_bd
 
 
-# %% Funciones para graficar
+# %% Funciones para organizar
 
-def aus_simple_tiempo():
-    datos_1 = sql_aus_simple_tiempo()  # Consulta SQL, fechas y duración por certificado
+def aus_simple_tiempo(frec):
+    # Consulta SQL, fechas y duración por certificado
+    datos_1 = sql_aus_simple_tiempo()
     datos_2 = crear_dic_fechas(datos_1)  # Crear diccionario de fechas
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(list(datos_2.keys()), list(datos_2.values()),
-            marker='o', color='skyblue')
+    fechas_org = organizar_fechas(datos_2, frec)
+    figura = graficar_1(fechas_org, frec)
+    return figura
 
-    ax.set_xlabel('Fecha')
-    ax.set_ylabel('Cantidad de ausencias')
-    ax.set_title('Ausencias por fecha')
 
-    plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+def organizar_fechas(datos, frec):
+    df_fechas = pd.DataFrame(list(datos.items()), columns=[
+        'Fecha', 'Frecuencia'])
+    # Asegurarse de que sean datetime
+    df_fechas['Fecha'] = pd.to_datetime(df_fechas['Fecha'])
 
-    # Personalizar las etiquetas del eje x
+    if frec == 0:  # Dia
+        df_fechas_2 = df_fechas.sort_values('Fecha')  # Ordenar por fecha
+    elif frec == 1:  # Mes
+        df_fechas.set_index('Fecha', inplace=True)
+        df_fechas_2 = df_fechas.resample('ME').sum().reset_index()
+    elif frec == 2:  # Trimestre
+        df_fechas.set_index('Fecha', inplace=True)
+        df_fechas_2 = df_fechas.resample('QE').sum().reset_index()
+    
+    return df_fechas_2
+
+# %%  Funciones para graficar
+
+
+def graficar_1(fechas, frec):
+
+    # Crear la figura y el eje
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(fechas['Fecha'], fechas['Frecuencia'], marker='o', linestyle='-')
+    ax.set_ylabel('Frecuencia de Ausencias')
     plt.xticks(rotation=45)
     plt.tight_layout()
+    plt.subplots_adjust(top=0.9, bottom=0.3, left=0.1, right=0.9)
+
+    if frec == 0:  # Dia
+        ax.set_title('Frecuencia de Ausencias por día')
+        ax.set_xlabel('Fecha')
+    elif frec == 1:  # Mes
+        ax.set_title('Frecuencia de Ausencias por Mes')
+        ax.set_xlabel('Mes')
+    elif frec == 2:  # Trimestre
+        ax.set_title('Frecuencia de Ausencias por Trimestre')
+        # Configurar etiquetas del eje X
+        trimestres = fechas['Fecha']
+        ax.set_xticks(trimestres)  # Establecer posiciones de los ticks
+        # Crear etiquetas con el formato "trimestre 1 2023"
+        labels = [f'Trimestre {date.quarter} {date.year}' for date in trimestres]
+        ax.set_xticklabels(labels, rotation=35)
+        ax.xaxis.set_tick_params(pad=10)
     return fig
+
 
 # %% Consultas SQL
 
 
 def sql_aus_simple_tiempo ():
-    sql = '''SELECT c.validez_dde, c.dias
+    sql = '''SELECT c.validez_dde, c.validez_hta
              FROM certificados AS c
              JOIN tcd AS t
              WHERE t.id_agr = 0 OR t.id_agr = 3'''
@@ -54,38 +91,17 @@ def sql_varias_filas(consulta):
 # %% Funciones auxiliares para los graficos
 
 def crear_dic_fechas(tabla_SJ):
-    '''Input: Fechas de inicio y duracion de los certificados
+    '''Input: Fechas de inicio y fin de los certificados
     Output: diccionario de fechas:
     clave: fecha
     valor: cantidad de ausencias en esa fecha.
     '''
-    # Usa defaultdict para evitar comprobaciones de existencia
-    dic_fechas = defaultdict(int)
-    todas_fechas = []  # Crear una lista de todas las fechas con ausencias
-    # Iterar sobre las filas del DataFrame
-    print('punto_1')
-    for inicio, duracion in tabla_SJ:
-        fechas_evento = pd.date_range(start=inicio, periods=duracion).to_list()
-        # Agregar el rango de fechas a la lista
-        todas_fechas.extend(fechas_evento)
-    print('punto_2')
+    # Crear un contador para acumular las frecuencias
+    contador_fechas = Counter()
 
-    # Convertir la lista a una Serie de pandas y contar cada fecha
-    fechas_serie = pd.Series(todas_fechas)
-    conteo_fechas = fechas_serie.value_counts()
-
-    # Convertir a diccionario
-    dic_fechas = conteo_fechas.to_dict()
-    '''
-    for row in tabla_SJ:
-        # Generar un rango de fechas
-        fechas_evento = pd.date_range(
-            start=row[0], periods=row[1]).tolist()
-        # Sumar los dias con ausencias al diccionario
-        for dia in fechas_evento:
-            if dia in dic_fechas:
-                dic_fechas[dia] += 1
-            else:
-                dic_fechas[dia] = 1
-                '''
-    return dic_fechas
+    # Iterar sobre cada tupla de (fecha_inicio, fecha_fin)
+    for inicio, fin in tabla_SJ:
+        # Crear el rango de fechas y actualizar el contador
+        rango_fechas = pd.date_range(start=inicio, end=fin)
+        contador_fechas.update(rango_fechas)
+    return contador_fechas

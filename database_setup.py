@@ -68,7 +68,7 @@ def crear_base():
                   id_tc              INT             NOT NULL,
                   nro_legajo         INT             NOT NULL,
                   validez_dde        DATE            NOT NULL,
-                  dias               INT             NOT NULL,
+                  validez_hta        DATE            NOT NULL,
                   descripcion        TEXT,
                   obs_general        TEXT
                 );''')
@@ -122,19 +122,23 @@ def limpieza_db(ruta):
     base_df['Validez_Desde'] = pd.to_datetime(base_df['Validez_Desde'],
                                             dayfirst=True, errors='coerce')
 
+    # Eliminar certificados de duracion menor a 1 (dias)
+    base_df = base_df[base_df['Dias'] >= 1]
+
     # Eliminar la columna de fecha de fin de certificado
-    base_df= base_df.drop('Validez_Hasta', axis=1)
+    base_df= base_df.drop('Dias', axis=1)
 
     # Eliminar filas con NaN en nro legajo o en fecha
     base_df = base_df.dropna(
         subset=[base_df.columns[3], base_df.columns[9]])
-    
-    # Eliminar certificados de duracion menor a 1 (dias)
-    base_df = base_df[base_df['Dias'] >= 1]
 
     # Convertir la columna "Validez_Desde" a un formato correcto para SQL
     base_df['Validez_desde'] = pd.to_datetime(
         base_df['Validez_Desde']).dt.date
+
+    # Convertir la columna "Validez_Hasta" a un formato correcto para SQL
+    base_df['Validez_hasta'] = pd.to_datetime(
+        base_df['Validez_Hasta']).dt.date
     return base_df
 
 # %% Agregado de columnas de ID
@@ -163,7 +167,7 @@ def dividir_tabla(ruta):
     T_Emp = base_df_limpia[['Numero_Legajo', 'Nombre', 'ID_Dep']].drop_duplicates()
     # Tabla T_Cer (Certificados, tabla central)
     T_Cer = base_df_limpia[['Numero_Certificado', 'ID_TC', 'Numero_Legajo',
-                            'Validez_desde', 'Dias', 'Descripcion',
+                            'Validez_desde', 'Validez_hasta', 'Descripcion',
                             'Observacion_General']].drop_duplicates()
 
     listado_databases = ((T_TCD, 'TCD'), (T_Dep, 'departamentos'),
