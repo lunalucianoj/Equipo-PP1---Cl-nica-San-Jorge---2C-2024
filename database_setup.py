@@ -73,6 +73,9 @@ def crear_base():
                   obs_general        TEXT
                 );''')
 
+    # Crear indices
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_id_agr ON tcd (id_agr);')
+
     conn.commit()
     cur.close()
     conn.close()

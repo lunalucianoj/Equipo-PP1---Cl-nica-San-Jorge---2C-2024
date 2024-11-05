@@ -38,7 +38,7 @@ class VentanaPrincipal(tk.Tk):
         self.title('Análisis de ausencias Clínica San Jorge')
         self['bg'] = color_fondo
         try:
-            selfset_icon()
+            self.set_icon()
         except:
             pass
 
@@ -48,6 +48,11 @@ class VentanaPrincipal(tk.Tk):
         # Marco para los graficos
         self.fr_graficos = tk.Frame(self, bg=color_fondo, height=400)
         self.fr_graficos.pack(side="top", fill="x")
+        # Indicar que falta base de datos
+        self.la_falta_excel = tk.Label(
+            self.fr_graficos, text='Por favor cargue la tabla de Excel con' +
+                                   ' los certificados')
+        self.cartel_area_graf()
 
 
         # Marco para los seleccionadores
@@ -67,35 +72,50 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec_2.grid(row=0, column=2, sticky="nsew")
         self.fr_selec_3.grid(row=0, column=3, sticky="nsew")
 
+        # Menues de seleccion
+        self.selec_tipo_graf()
+        self.ver_selec_tipo_graf(1)
+        self.selec_frec_graf()
+
+    # %% Menus de radio buttom
+
+    def selec_tipo_graf(self):
         # Frame 0 (izquierda)
+        self.fr_selec_0b = tk.Frame(self.fr_selec_0)
         tex_1 = 'Seleccione el gráfico que desea:'
-        self.lab_fr0 = tk.Label(self.fr_selec_0, text=tex_1)
+        self.lab_fr0 = tk.Label(self.fr_selec_0b, text=tex_1)
         self.lab_fr0.grid(row=0, column=0, sticky="w")
 
         self.var_fr0 = tk.IntVar()
-        self.rb0_fr0 = tk.Radiobutton(self.fr_selec_0,
+        self.rb0_fr0 = tk.Radiobutton(self.fr_selec_0b,
                                       text='Ausencias totales',
-                                      variable=self.var_fr0, value=1,
+                                      variable=self.var_fr0, value=0,
                                       command=self.distribuidor_frame_0)
-        self.rb1_fr0 = tk.Radiobutton(self.fr_selec_0,
+        self.rb1_fr0 = tk.Radiobutton(self.fr_selec_0b,
                                       text='Ausencias controlables' +
                                       ' vs no controlables',
+                                      variable=self.var_fr0, value=1,
+                                      command=self.distribuidor_frame_0)
+        self.rb2_fr0 = tk.Radiobutton(self.fr_selec_0b, text='Ausencias' +
+                                      ' justificadas vs injustificadas',
                                       variable=self.var_fr0, value=2,
                                       command=self.distribuidor_frame_0)
-        self.rb2_fr0 = tk.Radiobutton(self.fr_selec_0, text='Ausencias' +
-                                      ' justificadas vs injustificadas',
-                                      variable=self.var_fr0, value=3,
-                                      command=self.distribuidor_frame_0)
-        self.rb3_fr0 = tk.Radiobutton(self.fr_selec_0, text='Duración del' +
+        self.rb3_fr0 = tk.Radiobutton(self.fr_selec_0b, text='Duración del' +
                                       ' ausentismo',
-                                      variable=self.var_fr0, value=4,
+                                      variable=self.var_fr0, value=3,
                                       command=self.distribuidor_frame_0)
         self.rb0_fr0.grid(row=1, column=0, sticky="w")
         self.rb1_fr0.grid(row=2, column=0, sticky="w")
         self.rb2_fr0.grid(row=3, column=0, sticky="w")
         self.rb3_fr0.grid(row=4, column=0, sticky="w")
 
-        # Frame 1 (izquierda centro)
+    def ver_selec_tipo_graf(self, mostrar):
+        if mostrar == 1:
+            self.fr_selec_0b.pack()
+        else:
+            self.fr_selec_0b.pack_forget()
+
+    def selec_frec_graf(self):
         # Frame interior (1b)
         self.fr_selec_1b = tk.Frame(self.fr_selec_1)
         tex_2 = 'Seleccione la frecuencia:'
@@ -108,19 +128,25 @@ class VentanaPrincipal(tk.Tk):
                                       variable=self.var_fr1, value=1,
                                       command=self.distribuidor_frame_1)
         self.rb1_fr1 = tk.Radiobutton(self.fr_selec_1b,
-                                      text='Por mes',
+                                      text='Por semana',
                                       variable=self.var_fr1, value=2,
                                       command=self.distribuidor_frame_1)
-        self.rb2_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por estación',
+        self.rb2_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes',
                                       variable=self.var_fr1, value=3,
                                       command=self.distribuidor_frame_1)
-        self.rb3_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por año',
+        self.rb3_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por estación',
                                       variable=self.var_fr1, value=4,
                                       command=self.distribuidor_frame_1)
         self.rb0_fr1.grid(row=1, column=0, sticky="w")
         self.rb1_fr1.grid(row=2, column=0, sticky="w")
         self.rb2_fr1.grid(row=3, column=0, sticky="w")
         self.rb3_fr1.grid(row=4, column=0, sticky="w")
+
+    def ver_selec_frec_graf(self, mostrar):
+        if mostrar == 1:
+            self.fr_selec_1b.pack()
+        else:
+            self.fr_selec_1b.pack_forget()
 
     # %% Funciones
 
@@ -139,6 +165,7 @@ class VentanaPrincipal(tk.Tk):
         self.la_falta_tabla.forget()
         '''
         crear_db(ruta_tabla)
+        self.cartel_area_graf() # Para borrar el cartel si se carga una base de datos
 
     def crear_graf_total(self, frec=0):
         lista_fechas = []
@@ -165,24 +192,25 @@ class VentanaPrincipal(tk.Tk):
     def distribuidor_frame_0(self):
         '''Asigna la funcion correcta segun la eleccion en el frame de la
         izquierda'''
-        if self.var_fr0.get() == 1:
+        graf = self.var_fr0.get()
+        if graf == 0:
             self.opciones_frecuencia(1)
-        elif self.var_fr0.get() == 2:
+        elif graf == 1:
             self.opciones_frecuencia(1)
-        elif self.var_fr0.get() == 3:
+        elif graf == 2:
             self.opciones_frecuencia(1)
-        elif self.var_fr0.get() == 4:
+        elif graf == 3:
             self.opciones_frecuencia(0)
 
     def distribuidor_frame_1(self):
-        '''Asigna la fucnion correcta segun la eleccion en el frame de la
+        '''Verifica que se haya cargado una base de datos y
+        asigna la funcion correcta segun la eleccion en el frame de la
         izquierda'''
-        if not hasattr(self, 'tabla_SJ') or self.tabla_SJ.empty:
-            self.la_falta_tabla.forget()
-            self.la_falta_tabla.pack()
+        hay_base = utils.verif_base_datos('cert')
+        if hay_base == 'base_0':
+            pass
         else:
-            self.la_falta_tabla.forget()
-            self.graf_1 = self.mostrar_grafico(self.var_fr1.get())
+            self.mostrar_grafico()
 
     def limpiar_base(self):
         # Eliminar la columna de fecha de fin de certificado
@@ -195,7 +223,7 @@ class VentanaPrincipal(tk.Tk):
         # Eliminar filas con dias negativos
         self.tabla_SJ = self.tabla_SJ[self.tabla_SJ["Dias"] > 0]
 
-    def mostrar_grafico(self, frec):
+    def mostrar_grafico(self):
         figura = graficos.aus_simple_tiempo()
 
         # Limpiar el frame y mostrar el gráfico
@@ -208,10 +236,13 @@ class VentanaPrincipal(tk.Tk):
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def opciones_frecuencia(self, mostrar):
-       if mostrar == 1:
-           self.fr_selec_1b.pack()
-       else:
-            self.fr_selec_1b.forget()
+        '''En caso que haya opciones de como graficar agrupando los datos
+        por frecuencia, mostrar el frame de opciones de frecuencias'''
+
+        if mostrar == 1:
+            self.ver_selec_frec_graf(1)
+        else:
+            self.ver_selec_frec_graf(0)
 
     def set_icon(self):
         # Cargar el icono de la parte superior izquierda 
@@ -221,12 +252,14 @@ class VentanaPrincipal(tk.Tk):
 
 # %% Funciones de labels
 
-def la_cargue_excel():
-    self.la_falta_excel = tk.Label(
-    self.fr_graficos, text='Por favor cargue la tabla de Excel con' +
-    ' los certificados')
-    dir = utils.ver_directorio_actual
-    
+    def cartel_area_graf(self):
+        base_cert = utils.verif_base_datos('cert')
+
+        if base_cert == 'base_0':
+            self.la_falta_excel.pack()
+        else:
+            self.la_falta_excel.destroy()
+
 
 # %% Iniciar el bucle principal de la interfaz gráfica
 
