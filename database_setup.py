@@ -6,9 +6,9 @@ Este es un archivo temporal.
 """
 
 # Imports
-import os
-import pandas as pd
 import sqlite3
+import pandas as pd
+from collections import Counter
 
 # %% Apertura de la base
 
@@ -19,6 +19,7 @@ import sqlite3
 
 
 def abrir_excel(ruta):
+    '''lee archivos de Excel (1ra pestaña) como data frame de Pandas'''
     base_df = pd.read_excel(ruta)
     return base_df
 
@@ -72,6 +73,14 @@ def crear_base():
                   descripcion        TEXT,
                   obs_general        TEXT
                 );''')
+    
+    # Crear tabla de ausencias
+    cur.execute('''CREATE TABLE IF NOT EXISTS ausencias
+                 (fecha              DATA            PRIMARY KEY,
+                  justificado        INT,
+                  no_justificado     INT,
+                  no_controlable     INT
+                );''')
 
     # Crear indices
     cur.execute('CREATE INDEX IF NOT EXISTS idx_id_agr ON tcd (id_agr);')
@@ -116,6 +125,7 @@ print(duplicados_certificado)
 
 # %% Limpieza de la base
 
+
 def limpieza_db(ruta):
     base_df = abrir_excel(ruta)
     # Convertir las fechas al formato correcto
@@ -142,6 +152,8 @@ def limpieza_db(ruta):
     return base_df
 
 # %% Agregado de columnas de ID
+
+
 def agregar_ID(ruta):
     base_df_limpia = limpieza_db(ruta)
     # Agregar ID_TC (ID para cada tipo de certificado).
@@ -174,6 +186,80 @@ def dividir_tabla(ruta):
                         (T_Agr, 'agrupadores'), (T_Emp, 'empleados'),
                         (T_Cer, 'certificados'))
     return listado_databases
+
+# %% Organizar los datos para la tabla de ausencias
+
+
+def organizar_ausencias():
+    datos = sql_ausencias()
+    df = pd.DataFrame(datos, columns=[
+        'validez_dde', 'validez_hta', 'agrupadores', 'tipo_cert'])
+    contador_fechas = crear_dic_fechas(df)
+
+    # Insertar los resultados en la tabla de ausencias
+    insertar_ausencias(contador_fechas['justificado'], 'justificado')
+    insertar_ausencias(contador_fechas['no_justificado'], 'no_justificado')
+    insertar_ausencias(contador_fechas['no_controlable'], 'no_controlable')
+
+
+def sql_ausencias():
+    sql = '''SELECT c.validez_dde, c.validez_hta, t.id_agr,
+            t.id_tc AS Tipo_cert
+            FROM certificados AS c
+            JOIN tcd AS t ON c.id_tc = t.id_tc
+            WHERE t.id_agr = 0 OR t.id_agr = 3'''
+    return sql_con_ausencias(sql)
+
+
+def sql_con_ausencias(consulta):
+    '''Ejecuta la consulta sql que se indique
+    Input: consulta sql escrita correctamente
+    Output: Lo que devuelva la base de datos'''
+    abrir_bd()
+    cur.execute(consulta)
+    fechas_certificados = cur.fetchall()
+    cerrar_bd()
+    return fechas_certificados
+
+# Función para crear diccionarios de fechas clasificadas
+def crear_dic_fechas(df):
+    contador_fechas = { 'justificado': Counter(),
+                   'no_justificado': Counter(),
+                   'no_controlable': Counter() 
+    }
+
+    for _, row in df.iterrows():
+        rango_fechas = pd.date_range(start=row['validez_dde'], end=row['validez_hta'])
+        if row['tipo_cert'] == 4:
+            contador_fechas['no_justificado'].update(rango_fechas)
+        elif row['agrupadores'] == 0:
+            contador_fechas['justificado'].update(rango_fechas)
+        elif row['agrupadores'] == 3:
+            contador_fechas['no_controlable'].update(rango_fechas)
+    return contador_fechas
+
+# Función para insertar las ausencias en la tabla SQL
+def insertar_ausencias(contador_fechas, categoria):
+    abrir_bd()
+    for fecha, cantidad in contador_fechas.items():
+        fecha_str = fecha.strftime('%Y-%m-%d')
+        if categoria == 'justificado':
+            cur.execute('''INSERT INTO ausencias (fecha, justificado)
+                        VALUES (?, ?) ON CONFLICT(fecha)
+                        DO UPDATE SET justificado=excluded.justificado''',
+                        (fecha_str, cantidad))
+        elif categoria == 'no_justificado':
+            cur.execute('''INSERT INTO ausencias (fecha, no_justificado)
+                        VALUES (?, ?) ON CONFLICT(fecha)
+                        DO UPDATE SET no_justificado=excluded.no_justificado''',
+                        (fecha_str, cantidad))
+        elif categoria == 'no_controlable':
+            cur.execute('''INSERT INTO ausencias (fecha, no_controlable)
+                        VALUES (?, ?) ON CONFLICT(fecha)
+                        DO UPDATE SET no_controlable=excluded.no_controlable''',
+                        (fecha_str, cantidad))
+    cerrar_bd()
+
 # %% Cargar los sub data frames en SQLITE
 
 
@@ -220,4 +306,4 @@ df_con_dias.to_csv('ausencias_por_día.csv', index=False, sep = ';')
 def crear_db(ruta):
     crear_base()
     pasar_a_db(ruta)
-    
+    organizar_ausencias()

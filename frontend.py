@@ -193,24 +193,16 @@ class VentanaPrincipal(tk.Tk):
         hay_base = utils.verif_base_datos('cert')
         if hay_base == 'base_0':
             pass
+        elif self.var_fr0.get() == 0:
+            self.mostrar_grafico(0)
         else:
-            self.mostrar_grafico()
+            self.mostrar_grafico(2)
 
-    def limpiar_base(self):
-        # Eliminar la columna de fecha de fin de certificado
-        self.tabla_SJ2 = self.tabla_SJ1.drop('Validez_Hasta', axis=1)
 
-        # Eliminar filas con NaN en nro legajo o en fecha
-        self.tabla_SJ = self.tabla_SJ2.dropna(
-            subset=[self.tabla_SJ2.columns[3], self.tabla_SJ2.columns[9]])
-
-        # Eliminar filas con dias negativos
-        self.tabla_SJ = self.tabla_SJ[self.tabla_SJ["Dias"] > 0]
-
-    def mostrar_grafico(self):
+    def mostrar_grafico(self, tipo):
         frec = self.var_fr1.get()
         if self.var_fr0.get() == 0:
-            figura = graficos.aus_simple_tiempo(frec)
+            figura = graficos.aus_simple_tiempo(frec, tipo)
 
         # Limpiar el frame y mostrar el gráfico
         for widget in self.fr_graficos.winfo_children():
