@@ -195,13 +195,15 @@ class VentanaPrincipal(tk.Tk):
             pass
         elif self.var_fr0.get() == 0:
             self.mostrar_grafico(0)
-        else:
+        elif self.var_fr0.get() == 1:
+            self.mostrar_grafico(1)
+        elif self.var_fr0.get() == 2:
             self.mostrar_grafico(2)
 
 
     def mostrar_grafico(self, tipo):
         frec = self.var_fr1.get()
-        if self.var_fr0.get() == 0:
+        if self.var_fr0.get() in [0, 1, 2]:
             figura = graficos.aus_simple_tiempo(frec, tipo)
 
         # Limpiar el frame y mostrar el gráfico

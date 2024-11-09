@@ -12,10 +12,7 @@ def aus_simple_tiempo(frec, tipo):
     # Consulta SQL, fechas y duración por certificado
     datos_1 = sql_aus_simple_tiempo()
     fechas_org = organizar_fechas(datos_1, frec)
-    if tipo == 0:
-        figura = graficar_0(fechas_org, frec)
-    if tipo == 2:
-        figura = graficar_2(fechas_org, frec)
+    figura = graficar_tiempo(fechas_org, frec, tipo)
     return figura
 
 
@@ -40,57 +37,18 @@ def organizar_fechas(datos, frec):
 # %%  Funciones para graficar
 
 
-def graficar_0(fechas, frec):
-    '''Crea los graficos de ausencias totales 
-    que se van a usar en el frontend.'''
+def graficar_tiempo(fechas, frec, tipo):
+    '''Creo los gráficos de ausencias en función del tiempo'''
 
+    # Preparar los datos segun el tipo de grafico
+    fig, ax = None
+    if tipo == 0:
+        fig, ax = preparar_graf_0(fechas, frec)
+    elif tipo == 1:
+        fig, ax = preparar_graf_1(fechas, frec)
+    elif tipo == 2:
+        fig, ax = preparar_graf_2(fechas, frec)
 
-    fechas.fillna(0, inplace=True)
-    # Agregar una nueva columna 'total_ausencias' que sea la suma de las
-    # columnas
-    fechas['total_ausencias'] = fechas['justificado'] + fechas['no_justificado'] +\
-    fechas['no_controlable']
-
-    # Crear la figura y el eje
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(fechas['Fecha'], fechas['total_ausencias'], marker='o', linestyle='-')
-    ax.set_ylabel('Frecuencia de Ausencias')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.9, bottom=0.3, left=0.1, right=0.9)
-
-    if frec == 0:  # Dia
-        ax.set_title('Frecuencia de Ausencias por día')
-        ax.set_xlabel('Fecha')
-        ax.plot(fechas['Fecha'], fechas['total_ausencias'], marker=None, linestyle='-')
-    elif frec == 1:  # Mes
-        ax.set_title('Frecuencia de Ausencias por Mes')
-        ax.set_xlabel('Mes')
-    elif frec == 2:  # Trimestre
-        ax.set_title('Frecuencia de Ausencias por Trimestre')
-        # Configurar etiquetas del eje X
-        trimestres = fechas['Fecha']
-        ax.set_xticks(trimestres)  # Establecer posiciones de los ticks
-        # Crear etiquetas con el formato "trimestre 1 2023"
-        labels = [f'Trimestre {date.quarter} {
-            date.year}' for date in trimestres]
-        ax.set_xticklabels(labels, rotation=35)
-        ax.xaxis.set_tick_params(pad=10)
-    return fig
-
-def graficar_2(fechas, frec):
-    '''Crea los graficos de ausencias justificadas vs no justificadas 
-    que se van a usar en el frontend.'''
-
-
-    fechas.fillna(0, inplace=True)
-
-    # Crear la figura y el eje
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(fechas['Fecha'], fechas['justificado'], label='Ausencias justificadas',
-            marker='o', linestyle='-')
-    ax.plot(fechas['Fecha'], fechas['no_justificado'], label='Ausencias no justificadas',
-            marker='o', linestyle='-')
 
     ax.set_ylabel('Frecuencia de Ausencias')
     plt.xticks(rotation=45)
@@ -117,6 +75,63 @@ def graficar_2(fechas, frec):
     # Mostrar la leyenda
     ax.legend()
     return fig
+
+
+def preparar_graf_0(fechas, frec):
+    '''Crea los graficos de ausencias totales 
+    que se van a usar en el frontend.'''
+
+
+    fechas.fillna(0, inplace=True)
+    # Agregar una nueva columna 'total_ausencias' que sea la suma de las
+    # columnas
+    fechas['total_ausencias'] = fechas['justificado'] +\
+        fechas['no_justificado'] + fechas['no_controlable']
+
+    # Crear la figura y el eje
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(fechas['Fecha'], fechas['total_ausencias'], marker='o', linestyle='-')
+ 
+    return fig, ax
+
+
+def preparar_graf_1(fechas, frec):
+    '''Crea los graficos de ausencias controlables vs no controlables
+    que se van a usar en el frontend.'''
+
+    fechas.fillna(0, inplace=True)
+    # Agregar una nueva columna 'controlables' que sea la suma
+    # de las justificadas y las no justificadas
+    fechas['controlables'] = fechas['justificado'] + fechas['no_justificado']
+
+    # Crear la figura y el eje
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(fechas['Fecha'], fechas['controlables'],
+            label='Ausencias controlables',
+            marker='o', linestyle='-')
+    ax.plot(fechas['Fecha'], fechas['no_controlable'],
+            label='Ausencias no controlables',
+            marker='o', linestyle='-')
+
+    return fig, ax
+
+
+def preparar_graf_2(fechas, frec):
+    '''Crea los graficos de ausencias justificadas vs no justificadas 
+    que se van a usar en el frontend.'''
+
+    fechas.fillna(0, inplace=True)
+
+    # Crear la figura y el eje
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(fechas['Fecha'], fechas['justificado'],
+            label='Ausencias justificadas',
+            marker='o', linestyle='-')
+    ax.plot(fechas['Fecha'], fechas['no_justificado'],
+            label='Ausencias no justificadas',
+            marker='o', linestyle='-')
+
+    return fig, ax
 
 
 # %% Consultas SQL
