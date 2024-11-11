@@ -8,17 +8,13 @@ Front end para la visualizacion de graficos realizado para el area de RRHH
 de la Clinica San Jorge (Ushuaia)
 """
 # %% Importaciones
-import graficos
 import tkinter as tk
-from tkinter import ttk
 from tkinter import filedialog as fd
-import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import utils
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from collections import Counter
-from database_setup import crear_db
+import graficos
+import utils
+from database_setup import crear_db_cert, crear_db_empleados
 
 # %% Graficos institucionales
 
@@ -86,7 +82,8 @@ class VentanaPrincipal(tk.Tk):
         self.lab_fr0 = tk.Label(self.fr_selec_0b, text=tex_1)
         self.lab_fr0.grid(row=0, column=0, sticky="w")
 
-        self.var_fr0 = tk.IntVar()
+        # Radio button para seleccionar tipo de grafico
+        self.var_fr0 = tk.IntVar(value=-1)
         self.rb0_fr0 = tk.Radiobutton(self.fr_selec_0b,
                                       text='Ausencias totales',
                                       variable=self.var_fr0, value=0,
@@ -122,7 +119,9 @@ class VentanaPrincipal(tk.Tk):
         self.lab_fr1 = tk.Label(self.fr_selec_1b, text=tex_2)
         self.lab_fr1.grid(row=0, column=0, sticky="w")
 
-        self.var_fr1 = tk.IntVar()
+        # Radio button para seleccionar frecuencia
+        # Inicializo con un valor que no representa nada ("-1")
+        self.var_fr1 = tk.IntVar(value=-1)
         self.rb0_fr1 = tk.Radiobutton(self.fr_selec_1b,
                                       text='Por día',
                                       variable=self.var_fr1, value=0,
@@ -154,13 +153,21 @@ class VentanaPrincipal(tk.Tk):
         }
         ruta_tabla = fd.askopenfilename(**opciones)
         self.focus()
-        '''
-        self.tabla_SJ1 = pd.read_excel(ruta_tabla)
-        self.limpiar_base()
-        self.la_falta_tabla.forget()
-        '''
-        crear_db(ruta_tabla)
+        crear_db_cert(ruta_tabla)
         self.cartel_area_graf() # Para borrar el cartel si se carga una base de datos
+
+
+    def cargar_empleados(self):
+        '''Abre un menu para buscar en los archivos la tabla de
+        los empleados de la clinica'''
+        opciones = {
+            'title': 'Seleccionar archivo',
+            'filetypes': [('Achivos compatibles', '*.xlsx')]
+        }
+        ruta_tabla = fd.askopenfilename(**opciones)
+        self.focus()
+        crear_db_empleados(ruta_tabla)
+
 
     def create_menu(self):
         # Menu para agregar bases de datos
@@ -169,13 +176,14 @@ class VentanaPrincipal(tk.Tk):
         self.menu_nuevo.add_command(
             label='Agregar tabla certificados', command=self.cargar_certif)
         self.menu_nuevo.add_command(
-            label='Agregar tabla empleados')
+            label='Agregar tabla empleados', command=self.cargar_empleados)
         self.menu_base.add_cascade(label='Agregar datos', menu=self.menu_nuevo)
         self.config(menu=self.menu_base)
 
     def distribuidor_frame_0(self):
         '''Asigna la funcion correcta segun la eleccion en el frame de la
         izquierda'''
+        self.var_fr1.set(-1)
         graf = self.var_fr0.get()
         if graf == 0:
             self.opciones_frecuencia(1)
@@ -209,6 +217,7 @@ class VentanaPrincipal(tk.Tk):
         # Limpiar el frame y mostrar el gráfico
         for widget in self.fr_graficos.winfo_children():
             widget.destroy()
+        plt.close('all')
    
         # Convertir figura a un Canvas de Tkinter y empaquetarlo en el frame
         canvas = FigureCanvasTkAgg(figura, master=self.fr_graficos)

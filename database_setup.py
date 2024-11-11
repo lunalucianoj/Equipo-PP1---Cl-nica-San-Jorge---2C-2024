@@ -58,10 +58,25 @@ def crear_base():
     cur.execute('''CREATE TABLE IF NOT EXISTS empleados
                 (nro_legajo    INTEGER PRIMARY KEY,
                  nombre        TEXT            NOT NULL,
-                 id_dep        INT               NOT NULL,
+                 cuil          INT,
+                 id_suc        INT             NOT NULL,
+                 id_dep        INT             NOT NULL,
+                 id_cat        INT             NOT NULL,
                  FOREIGN KEY (id_DEP) REFERENCES departamentos(id_dep)
                  ON DELETE CASCADE
               );''')
+
+    # Crear tabla sucursales
+    cur.execute('''CREATE TABLE IF NOT EXISTS sucursales
+                id_suc      INT      INTEGER PRIMARY KEY,
+                sucursal   TEXT     NOT NULL
+                ''')
+
+    # Crear tabla categorias
+    cur.execute('''CREATE TABLE IF NOT EXISTS categorias
+                id_cat      INT      INTEGER PRIMARY KEY,
+                categoria   TEXT     NOT NULL
+                ''')   
 
     # Crear tabla de certificados
     cur.execute('''CREATE TABLE IF NOT EXISTS certificados
@@ -123,7 +138,7 @@ duplicados_certificado = base_df[base_df[
 print(duplicados_certificado)
 '''
 
-# %% Limpieza de la base
+# %% Limpieza de las bases
 
 
 def limpieza_db(ruta):
@@ -151,6 +166,16 @@ def limpieza_db(ruta):
         base_df['Validez_Hasta']).dt.date
     return base_df
 
+
+def limpieza_db_empleados(ruta):
+    '''Limpia la base de datos de empleados'''
+    base_df = abrir_excel(ruta)
+
+    # Eliminar las filas 1 a 3
+    base_df = base_df.drop(base_df.index[0:2])
+
+    # Conservar las primeras 6 filas
+    base_df = base_df.iloc[0:6]
 # %% Agregado de columnas de ID
 
 
@@ -162,10 +187,17 @@ def agregar_ID(ruta):
     base_df_limpia.loc[:, 'ID_Dep'] = pd.factorize(base_df_limpia['Departamento'])[0]
     # Agregar ID_Agr (ID para cada tipo de agrupador)
     base_df_limpia.loc[:, 'ID_Agr'] = pd.factorize(base_df_limpia['Agrupador'])[0]
-    return  base_df_limpia
+    return base_df_limpia
 
 
-# %% Dividir la tabla en sub tablas para SQL
+def agregar_ID_empleados(ruta):
+    base_df_limpia = limpieza_db_empleados(ruta)
+    # Agregar ID_suc (ID para cada sucursal)
+    base_df_limpia.loc[:, 'ID_Suc'] = pd.factorize(base_df_limpia['Sucursal'])[0]
+    # Agregar ID_cat (ID para cada categoria de empleado)
+    base_df_limpia.loc[:, 'ID_cat'] = pd.factorize(base_df_limpia['Categoria'])[0]
+
+# %% Dividir las tablas en sub tablas para SQL
 
 # Tabla T_TCD (Detalle de tipo de certificado)
 def dividir_tabla(ruta):
@@ -176,15 +208,30 @@ def dividir_tabla(ruta):
     # Tabla T_Agr (Agrupadores)
     T_Agr = base_df_limpia[['ID_Agr', 'Agrupador']].drop_duplicates()
     # Tabla T_Emp (Empleados)
-    T_Emp = base_df_limpia[['Numero_Legajo', 'Nombre', 'ID_Dep']].drop_duplicates()
+    T_Emp = base_df_limpia[['Numero_Legajo', 'Nombre',
+                            'ID_Dep']].drop_duplicates()
     # Tabla T_Cer (Certificados, tabla central)
     T_Cer = base_df_limpia[['Numero_Certificado', 'ID_TC', 'Numero_Legajo',
                             'Validez_desde', 'Validez_hasta', 'Descripcion',
                             'Observacion_General']].drop_duplicates()
 
     listado_databases = ((T_TCD, 'TCD'), (T_Dep, 'departamentos'),
-                        (T_Agr, 'agrupadores'), (T_Emp, 'empleados'),
-                        (T_Cer, 'certificados'))
+                         (T_Agr, 'agrupadores'), (T_Emp, 'empleados'),
+                         (T_Cer, 'certificados'))
+    return listado_databases
+
+
+def dividir_tabla_empleados(ruta):
+    base_df_limpia = agregar_ID_empleados(ruta)
+    # Tabla T_Suc (Sucursales)
+    T_Suc = base_df_limpia[['ID_Suc', 'Sucursal']].drop_duplicates()
+    # Tabla T_Cat (Categorias de empleados)
+    T_Cat = base_df_limpia[['ID_cat', 'Categoria']].drop_duplicates()
+    # Tabla T_Emp (Empleados)
+    T_Emp = base_df_limpia[['Numero_Legajo', 'Nombre', 'CUIL', 'ID_cat',
+                            'ID_Suc', 'ID_Dep']].drop_duplicates()
+    listado_databases = ((T_Suc, 'sucursales'), (T_Cat, 'categorias'),
+                         (T_Emp, 'empleados'))
     return listado_databases
 
 # %% Organizar los datos para la tabla de ausencias
@@ -282,6 +329,16 @@ def pasar_a_db(ruta):
         cargar_df_en_db(tabla[0], tabla[1])
 
 
+def pasar_a_db_empleados(ruta):
+    listado_databases = dividir_tabla_empleados(ruta)
+    # Borrar la tabla de empleados preexistente de la bd
+    abrir_bd()
+    cur.execute("DROP TABLE IF EXISTS empleados")
+    cerrar_bd()
+    for tabla in listado_databases:
+        cargar_df_en_db(tabla[0], tabla[1])
+
+
 # %% Contar las faltas por dia de la semana
 
 '''
@@ -303,7 +360,11 @@ df_con_dias = pd.concat([df, conteo_dias.set_axis(dias_semana, axis=1)], axis=1)
 df_con_dias.to_csv('ausencias_por_día.csv', index=False, sep = ';')
 '''
 
-def crear_db(ruta):
+def crear_db_cert(ruta):
     crear_base()
     pasar_a_db(ruta)
     organizar_ausencias()
+
+
+def crear_db_empleados(ruta):
+    pasar_a_db_empleados(ruta)

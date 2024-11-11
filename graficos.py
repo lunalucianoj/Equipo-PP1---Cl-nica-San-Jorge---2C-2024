@@ -41,26 +41,36 @@ def graficar_tiempo(fechas, frec, tipo):
     '''Creo los gráficos de ausencias en función del tiempo'''
 
     # Preparar los datos segun el tipo de grafico
-    fig, ax = None
+    fig, ax = plt.subplots()
     if tipo == 0:
-        fig, ax = preparar_graf_0(fechas, frec)
+        fig, ax = preparar_graf_0(fechas)
     elif tipo == 1:
-        fig, ax = preparar_graf_1(fechas, frec)
+        fig, ax = preparar_graf_1(fechas)
     elif tipo == 2:
-        fig, ax = preparar_graf_2(fechas, frec)
-
+        fig, ax = preparar_graf_2(fechas)
 
     ax.set_ylabel('Frecuencia de Ausencias')
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.subplots_adjust(top=0.9, bottom=0.3, left=0.1, right=0.9)
+    primer_dia_mes = fechas[fechas['Fecha'].dt.is_month_start]['Fecha']
 
     if frec == 0:  # Dia
         ax.set_title('Frecuencia de Ausencias por día')
         ax.set_xlabel('Fecha')
+        ax.set_xticks(primer_dia_mes)
+        ax.set_xticklabels(primer_dia_mes.dt.strftime('%Y-%m-%d'),
+                           rotation=45, ha='right')
+        for x in primer_dia_mes:
+            plt.axvline(x=x, linestyle='-', linewidth=0.4, color='lightgrey')
     elif frec == 1:  # Mes
         ax.set_title('Frecuencia de Ausencias por Mes')
         ax.set_xlabel('Mes')
+        ax.set_xticks(fechas['Fecha'])
+        ax.set_xticklabels(fechas['Fecha'].dt.strftime('%Y-%m'),
+                           rotation=45, ha='right')
+        for x in fechas['Fecha']:
+            plt.axvline(x=x, linestyle='-', linewidth=0.4, color='lightgrey')
     elif frec == 2:  # Trimestre
         ax.set_title('Frecuencia de Ausencias por Trimestre')
         # Configurar etiquetas del eje X
@@ -69,18 +79,18 @@ def graficar_tiempo(fechas, frec, tipo):
         # Crear etiquetas con el formato "trimestre 1 2023"
         labels = [f'Trimestre {date.quarter} {
             date.year}' for date in trimestres]
+        ax.set_xticklabels(labels, ha='right')
         ax.set_xticklabels(labels, rotation=35)
         ax.xaxis.set_tick_params(pad=10)
-
-    # Mostrar la leyenda
-    ax.legend()
+        for x in trimestres:
+            plt.axvline(x=x, linestyle='-', linewidth=0.4, color='lightgrey')
+    
     return fig
 
 
-def preparar_graf_0(fechas, frec):
+def preparar_graf_0(fechas):
     '''Crea los graficos de ausencias totales 
     que se van a usar en el frontend.'''
-
 
     fechas.fillna(0, inplace=True)
     # Agregar una nueva columna 'total_ausencias' que sea la suma de las
@@ -90,12 +100,13 @@ def preparar_graf_0(fechas, frec):
 
     # Crear la figura y el eje
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(fechas['Fecha'], fechas['total_ausencias'], marker='o', linestyle='-')
+    ax.plot(fechas['Fecha'], fechas['total_ausencias'],
+            linestyle='-')
  
     return fig, ax
 
 
-def preparar_graf_1(fechas, frec):
+def preparar_graf_1(fechas):
     '''Crea los graficos de ausencias controlables vs no controlables
     que se van a usar en el frontend.'''
 
@@ -108,15 +119,17 @@ def preparar_graf_1(fechas, frec):
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(fechas['Fecha'], fechas['controlables'],
             label='Ausencias controlables',
-            marker='o', linestyle='-')
+            marker=None, linestyle='-')
     ax.plot(fechas['Fecha'], fechas['no_controlable'],
             label='Ausencias no controlables',
-            marker='o', linestyle='-')
+            marker=None, linestyle='-')
+    # Mostrar la leyenda
+    ax.legend()
 
     return fig, ax
 
 
-def preparar_graf_2(fechas, frec):
+def preparar_graf_2(fechas):
     '''Crea los graficos de ausencias justificadas vs no justificadas 
     que se van a usar en el frontend.'''
 
@@ -126,10 +139,12 @@ def preparar_graf_2(fechas, frec):
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(fechas['Fecha'], fechas['justificado'],
             label='Ausencias justificadas',
-            marker='o', linestyle='-')
+            marker=None, linestyle='-')
     ax.plot(fechas['Fecha'], fechas['no_justificado'],
             label='Ausencias no justificadas',
-            marker='o', linestyle='-')
+            marker=None, linestyle='-')
+    # Mostrar la leyenda
+    ax.legend()
 
     return fig, ax
 
