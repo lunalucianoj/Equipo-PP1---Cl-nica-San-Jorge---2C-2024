@@ -18,7 +18,7 @@ def set_working_directory():
 def main():
 
     set_working_directory()
-    app = VentanaPrincipal() # Crea una instancia de VentanaPrincipal
+    app = VentanaPrincipal()  # Crea una instancia de VentanaPrincipal
 
     # Ejecutar la interfaz gráfica
     app.run()

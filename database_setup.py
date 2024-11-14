@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Editor de Spyder
 
-Este es un archivo temporal.
-"""
 
 # Imports
 import sqlite3
-import pandas as pd
 from collections import Counter
+import pandas as pd
 
 # %% Apertura de la base
 
@@ -58,25 +54,10 @@ def crear_base():
     cur.execute('''CREATE TABLE IF NOT EXISTS empleados
                 (nro_legajo    INTEGER PRIMARY KEY,
                  nombre        TEXT            NOT NULL,
-                 cuil          INT,
-                 id_suc        INT             NOT NULL,
                  id_dep        INT             NOT NULL,
-                 id_cat        INT             NOT NULL,
-                 FOREIGN KEY (id_DEP) REFERENCES departamentos(id_dep)
+                 FOREIGN KEY (id_dep) REFERENCES departamentos(id_dep)
                  ON DELETE CASCADE
               );''')
-
-    # Crear tabla sucursales
-    cur.execute('''CREATE TABLE IF NOT EXISTS sucursales
-                id_suc      INT      INTEGER PRIMARY KEY,
-                sucursal   TEXT     NOT NULL
-                ''')
-
-    # Crear tabla categorias
-    cur.execute('''CREATE TABLE IF NOT EXISTS categorias
-                id_cat      INT      INTEGER PRIMARY KEY,
-                categoria   TEXT     NOT NULL
-                ''')   
 
     # Crear tabla de certificados
     cur.execute('''CREATE TABLE IF NOT EXISTS certificados
@@ -86,7 +67,9 @@ def crear_base():
                   validez_dde        DATE            NOT NULL,
                   validez_hta        DATE            NOT NULL,
                   descripcion        TEXT,
-                  obs_general        TEXT
+                  obs_general        TEXT,
+                FOREIGN KEY (nro_legajo) REFERENCES empleados(nro_legajo)
+                 ON DELETE CASCADE
                 );''')
     
     # Crear tabla de ausencias
@@ -118,27 +101,77 @@ def cerrar_bd():
     cur.close()
     conn.close()
 
-# %% Verificaciones de datos de la base
-'''
-# Agrupa por el nombre y cuenta la cantidad de legajos únicos
-inconsistencias = base_df.groupby('Nombre')['Numero_Legajo'].nunique()
-inconsistencias_2 = base_df.groupby('Numero_Legajo')['Nombre'].nunique()
-# Muestra las filas donde hay más de un legajo para el mismo nombre
-inconsistencias_con_legajo_multiple = inconsistencias[inconsistencias > 1]
-inconsistencias_c_leg_multiple_2 = inconsistencias_2[inconsistencias_2 > 1]
-# Muestra los nombres que tienen más de un número de legajo
-print(inconsistencias_con_legajo_multiple)
-# Muestra los legajos que tienen más de un nombre
-print(inconsistencias_c_leg_multiple_2)
 
-# Verificar si hay números de certificado duplicados
-duplicados_certificado = base_df[base_df[
-    'Numero_Certificado'].duplicated(keep=False)]
-# Muestra los registros donde los números de legajo están repetidos
-print(duplicados_certificado)
-'''
+def borrar_empleados():
+    '''quitar la vieja tabla empleados'''
+    abrir_bd()
+    cur.execute('''DROP TABLE IF EXISTS empleados;''')
+    cerrar_bd()
+
+
+def actualizar_db():
+    '''Agregar nuevas tablas'''
+
+    borrar_empleados()
+    abrir_bd()
+
+    # Crear tabla categorias
+    cur.execute('''CREATE TABLE IF NOT EXISTS categorias
+                (id_cat      INT      INTEGER PRIMARY KEY,
+                categoria   TEXT     NOT NULL
+                );''')
+
+    # Crear tabla sucursales
+    cur.execute('''CREATE TABLE IF NOT EXISTS sucursales
+                (id_suc     INTEGER PRIMARY KEY,
+                sucursal   TEXT     NOT NULL
+                );''')
+
+    # Volver a crear tabla empleados
+    cur.execute('''CREATE TABLE IF NOT EXISTS empleados
+                (nro_legajo    INTEGER PRIMARY KEY,
+                 nombre        TEXT            NOT NULL,
+                 cuil          INT,
+                 id_suc        INT             NOT NULL,
+                 id_dep        INT             NOT NULL,
+                 id_cat        INT             NOT NULL,
+                 FOREIGN KEY (id_dep) REFERENCES departamentos(id_dep)
+                 ON DELETE CASCADE,
+                 FOREIGN KEY (id_suc) REFERENCES sucursales(id_suc)
+                 ON DELETE CASCADE,
+                FOREIGN KEY (id_cat) REFERENCES categorias(id_cat)
+                 ON DELETE CASCADE
+              );''')
+
+    cerrar_bd()
 
 # %% Limpieza de las bases
+
+def revisar_dpto(base):
+    '''Agrega a la tabla departamentos los
+    departamentos que esten en la tabla nueva
+    y no esten ya cargados en la tabla'''
+    abrir_bd()
+
+    # Obtener los departamentos existentes en la base de datos
+    cur.execute('SELECT departamento FROM departamentos')
+    departamentos_existentes = set([row[0] for row in cur.fetchall()])
+
+    # Filtrar los nuevos departamentos que no estén en la base de datos
+    nuevos_departamentos = [dep for dep in base['Departamento'] if 
+                            dep not in departamentos_existentes]
+    # Encontrar el último ID en la tabla departamentos
+    cur.execute('SELECT MAX(id_dep) FROM departamentos')
+    ultimo_id = cur.fetchone()[0]
+    if ultimo_id is None:
+        ultimo_id = 0
+
+    # Insertar nuevos departamentos en la base de datos
+    for i, departamento in enumerate(nuevos_departamentos, start=1):
+        nuevo_id = ultimo_id + i
+        cur.execute('INSERT INTO departamentos (id_dep, departamento) VALUES (?, ?)',
+                     (nuevo_id, departamento))
+    cerrar_bd()
 
 
 def limpieza_db(ruta):
@@ -151,7 +184,7 @@ def limpieza_db(ruta):
     base_df = base_df[base_df['Dias'] >= 1]
 
     # Eliminar la columna de fecha de fin de certificado
-    base_df= base_df.drop('Dias', axis=1)
+    base_df = base_df.drop('Dias', axis=1)
 
     # Eliminar filas con NaN en nro legajo o en fecha
     base_df = base_df.dropna(
@@ -169,35 +202,65 @@ def limpieza_db(ruta):
 
 def limpieza_db_empleados(ruta):
     '''Limpia la base de datos de empleados'''
-    base_df = abrir_excel(ruta)
+    base_df = pd.read_excel(ruta, skiprows=3, header=0)
 
-    # Eliminar las filas 1 a 3
-    base_df = base_df.drop(base_df.index[0:2])
+    # Conservar las primeras 6 columnas
+    base_df = base_df.iloc[:, :6]    
 
-    # Conservar las primeras 6 filas
-    base_df = base_df.iloc[0:6]
+    revisar_dpto(base_df)
+
+    return base_df
 # %% Agregado de columnas de ID
 
 
 def agregar_ID(ruta):
     base_df_limpia = limpieza_db(ruta)
     # Agregar ID_TC (ID para cada tipo de certificado).
-    base_df_limpia.loc[:, 'ID_TC'] = pd.factorize(base_df_limpia['TCDetalle'])[0]
+    base_df_limpia.loc[:, 'ID_TC'] = pd.factorize(
+        base_df_limpia['TCDetalle'])[0]
     # Agregar ID_Dep (ID para cada departamento)
-    base_df_limpia.loc[:, 'ID_Dep'] = pd.factorize(base_df_limpia['Departamento'])[0]
+    base_df_limpia.loc[:, 'ID_Dep'] = pd.factorize(
+        base_df_limpia['Departamento'])[0]
     # Agregar ID_Agr (ID para cada tipo de agrupador)
-    base_df_limpia.loc[:, 'ID_Agr'] = pd.factorize(base_df_limpia['Agrupador'])[0]
+    base_df_limpia.loc[:, 'ID_Agr'] = pd.factorize(
+        base_df_limpia['Agrupador'])[0]
     return base_df_limpia
+
+def reemplazar_id_dpto(ruta):
+    empleados = limpieza_db_empleados(ruta)
+    abrir_bd()
+    # Cargar la tabla departamentos en un DataFrame
+    query = 'SELECT id_dep, DEPARTAMENTO FROM departamentos'
+    departamentos_df = pd.read_sql_query(query, conn)
+
+    # Crear un diccionario de mapeo entre DEPARTAMENTO y id_dep
+    departamento_id_map = dict(zip(departamentos_df['DEPARTAMENTO'],
+                                   departamentos_df['id_dep']))
+    
+    # Reemplazar valores en la columna 'Departamento' 
+    # del DataFrame 'empleados' con 'id_dep'
+    empleados['id_dep'] = empleados['Departamento'].map(departamento_id_map)
+
+    # Eliminar la columna original 'Departamento'
+    empleados = empleados.drop(columns=['Departamento'])
+    cerrar_bd()
+    return empleados
 
 
 def agregar_ID_empleados(ruta):
-    base_df_limpia = limpieza_db_empleados(ruta)
+    '''Agregar los ID nuevos para poder
+    dividir la tabla a futuro'''
+    base_df_limpia = reemplazar_id_dpto(ruta)
     # Agregar ID_suc (ID para cada sucursal)
-    base_df_limpia.loc[:, 'ID_Suc'] = pd.factorize(base_df_limpia['Sucursal'])[0]
+    base_df_limpia.loc[:, 'ID_Suc'] = pd.factorize(
+        base_df_limpia['Sucursal'])[0]
     # Agregar ID_cat (ID para cada categoria de empleado)
-    base_df_limpia.loc[:, 'ID_cat'] = pd.factorize(base_df_limpia['Categoria'])[0]
+    base_df_limpia.loc[:, 'ID_cat'] = pd.factorize(
+        base_df_limpia['Categoria'])[0]
+    return base_df_limpia
 
 # %% Dividir las tablas en sub tablas para SQL
+
 
 # Tabla T_TCD (Detalle de tipo de certificado)
 def dividir_tabla(ruta):
@@ -222,14 +285,19 @@ def dividir_tabla(ruta):
 
 
 def dividir_tabla_empleados(ruta):
+    '''Divide la tabla de empleados en
+    subtablas para cargar en SQL'''
     base_df_limpia = agregar_ID_empleados(ruta)
     # Tabla T_Suc (Sucursales)
     T_Suc = base_df_limpia[['ID_Suc', 'Sucursal']].drop_duplicates()
     # Tabla T_Cat (Categorias de empleados)
     T_Cat = base_df_limpia[['ID_cat', 'Categoria']].drop_duplicates()
     # Tabla T_Emp (Empleados)
-    T_Emp = base_df_limpia[['Numero_Legajo', 'Nombre', 'CUIL', 'ID_cat',
-                            'ID_Suc', 'ID_Dep']].drop_duplicates()
+    T_Emp = base_df_limpia[['Nro. Legajo', 'Apellido y Nombre', 'CUIL',
+                            'ID_cat', 'ID_Suc', 'id_dep']].drop_duplicates()
+    # Tabla T_Dep (Departamentos)
+    # Al listar todos los departamentos se
+    # reemplaza la tabla previa
     listado_databases = ((T_Suc, 'sucursales'), (T_Cat, 'categorias'),
                          (T_Emp, 'empleados'))
     return listado_databases
@@ -270,13 +338,14 @@ def sql_con_ausencias(consulta):
 
 # Función para crear diccionarios de fechas clasificadas
 def crear_dic_fechas(df):
-    contador_fechas = { 'justificado': Counter(),
-                   'no_justificado': Counter(),
-                   'no_controlable': Counter() 
+    contador_fechas = {'justificado': Counter(),
+                       'no_justificado': Counter(),
+                       'no_controlable': Counter() 
     }
 
     for _, row in df.iterrows():
-        rango_fechas = pd.date_range(start=row['validez_dde'], end=row['validez_hta'])
+        rango_fechas = pd.date_range(start=row['validez_dde'],
+                                     end=row['validez_hta'])
         if row['tipo_cert'] == 4:
             contador_fechas['no_justificado'].update(rango_fechas)
         elif row['agrupadores'] == 0:
@@ -323,6 +392,7 @@ def cargar_df_en_db(dataf, tablaSQL):
     conn.executemany(query, valores)
     cerrar_bd()
 
+
 def pasar_a_db(ruta):
     listado_databases = dividir_tabla(ruta)
     for tabla in listado_databases:
@@ -332,39 +402,17 @@ def pasar_a_db(ruta):
 def pasar_a_db_empleados(ruta):
     listado_databases = dividir_tabla_empleados(ruta)
     # Borrar la tabla de empleados preexistente de la bd
-    abrir_bd()
-    cur.execute("DROP TABLE IF EXISTS empleados")
-    cerrar_bd()
     for tabla in listado_databases:
         cargar_df_en_db(tabla[0], tabla[1])
 
 
-# %% Contar las faltas por dia de la semana
-
-'''
-# Función para contar los días de la semana
-def contar_dias_semana(fecha_inicio, duracion):
-    if pd.isna(fecha_inicio) or duracion <= 0:  # Verifica fechas no válidas o duraciones incorrectas
-        return pd.Series([0]*7)  # Retorna cero para cada día si hay un error
-    dias = pd.date_range(fecha_inicio, periods=duracion)
-    return dias.weekday.value_counts().reindex(range(7), fill_value=0)
-
-# Aplicar la función a cada fila y expandir los resultados en columnas
-dias_semana = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
-conteo_dias = df.apply(lambda row: contar_dias_semana(row['Validez_Desde'], row['Dias']), axis=1)
-
-# Ya que 'conteo_dias' es un DataFrame, lo concatenamos directamente con 'df'
-df_con_dias = pd.concat([df, conteo_dias.set_axis(dias_semana, axis=1)], axis=1)
-
-
-df_con_dias.to_csv('ausencias_por_día.csv', index=False, sep = ';')
-'''
-
 def crear_db_cert(ruta):
+    '''Pasar tabla certificados a dataframe'''
     crear_base()
     pasar_a_db(ruta)
     organizar_ausencias()
 
 
 def crear_db_empleados(ruta):
+    actualizar_db()
     pasar_a_db_empleados(ruta)

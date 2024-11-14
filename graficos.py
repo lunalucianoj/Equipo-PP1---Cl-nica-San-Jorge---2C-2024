@@ -8,11 +8,15 @@ from database_setup import abrir_bd, cerrar_bd
 
 # %% Funciones para organizar
 
-def aus_simple_tiempo(frec, tipo):
+def aus_simple_tiempo(frec, tipo, vista = 0):
     # Consulta SQL, fechas y duración por certificado
     datos_1 = sql_aus_simple_tiempo()
     fechas_org = organizar_fechas(datos_1, frec)
-    figura = graficar_tiempo(fechas_org, frec, tipo)
+    figura = None
+    if vista == 0:
+        figura = graficar_tiempo(fechas_org, frec, tipo)
+    elif vista == 1:
+        figura = graficar_tiempo(fechas_org, frec, tipo, vista)
     return figura
 
 
@@ -37,16 +41,22 @@ def organizar_fechas(datos, frec):
 # %%  Funciones para graficar
 
 
-def graficar_tiempo(fechas, frec, tipo):
+def graficar_tiempo(fechas, frec, tipo, vista = 0):
     '''Creo los gráficos de ausencias en función del tiempo'''
 
     # Preparar los datos segun el tipo de grafico
     fig, ax = plt.subplots()
-    if tipo == 0:
+    if tipo == 0 and vista == 0:
+        # Totales
         fig, ax = preparar_graf_0(fechas)
+    elif tipo == 0 and vista == 1:
+        # Totales proporcion de ausencias
+        fig, ax = preparar_graf_0_porc(fechas)
     elif tipo == 1:
+        # Controlable vs no controlable
         fig, ax = preparar_graf_1(fechas)
     elif tipo == 2:
+        # Justificada vs no justificada
         fig, ax = preparar_graf_2(fechas)
 
     ax.set_ylabel('Frecuencia de Ausencias')
@@ -101,6 +111,32 @@ def preparar_graf_0(fechas):
     # Crear la figura y el eje
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(fechas['Fecha'], fechas['total_ausencias'],
+            linestyle='-')
+ 
+    return fig, ax
+
+
+def preparar_graf_0_porc(fechas):
+    '''Crea los graficos de ausencias totales 
+    que se van a usar en el frontend.
+    Usa porcentaje de ausencias'''
+
+    fechas.fillna(0, inplace=True)
+    # Agregar una nueva columna 'total_ausencias' que sea la suma de las
+    # columnas
+    fechas['total_ausencias'] = fechas['justificado'] +\
+        fechas['no_justificado'] + fechas['no_controlable']
+    
+    # Contar la cantidad de empleados
+    conn, cur = abrir_bd()
+    cur.execute('SELECT COUNT(nro_legajo) FROM empleados')
+    nro_empleados = cur.fetchone()[0]
+    cerrar_bd()
+    fechas['total_ausencias_porc'] = (fechas['total_ausencias'] /
+                                      nro_empleados) * 100
+    # Crear la figura y el eje
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(fechas['Fecha'], fechas['total_ausencias_porc'],
             linestyle='-')
  
     return fig, ax
@@ -168,6 +204,5 @@ def sql_varias_filas(consulta):
     inicio_certificados = cur.fetchall()
     cerrar_bd()
     return inicio_certificados
-
 
 # %% Funciones auxiliares para los graficos

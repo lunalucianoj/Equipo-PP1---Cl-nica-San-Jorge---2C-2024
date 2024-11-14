@@ -72,6 +72,7 @@ class VentanaPrincipal(tk.Tk):
         self.selec_tipo_graf()
         self.ver_selec_tipo_graf(1)
         self.selec_frec_graf()
+        self.selec_vista_graf()
 
     # %% Menus de radio buttom
 
@@ -87,24 +88,22 @@ class VentanaPrincipal(tk.Tk):
         self.rb0_fr0 = tk.Radiobutton(self.fr_selec_0b,
                                       text='Ausencias totales',
                                       variable=self.var_fr0, value=0,
-                                      command=self.distribuidor_frame_0)
+                                      command=self.opciones_frecuencia,
+                                      indicatoron = 1)
         self.rb1_fr0 = tk.Radiobutton(self.fr_selec_0b,
                                       text='Ausencias controlables' +
                                       ' vs no controlables',
                                       variable=self.var_fr0, value=1,
-                                      command=self.distribuidor_frame_0)
+                                      command=self.opciones_frecuencia,
+                                      indicatoron = 1)
         self.rb2_fr0 = tk.Radiobutton(self.fr_selec_0b, text='Ausencias' +
                                       ' justificadas vs injustificadas',
                                       variable=self.var_fr0, value=2,
-                                      command=self.distribuidor_frame_0)
-        self.rb3_fr0 = tk.Radiobutton(self.fr_selec_0b, text='Duración del' +
-                                      ' ausentismo',
-                                      variable=self.var_fr0, value=3,
-                                      command=self.distribuidor_frame_0)
+                                      command=self.opciones_frecuencia,
+                                      indicatoron = 1)
         self.rb0_fr0.grid(row=1, column=0, sticky="w")
         self.rb1_fr0.grid(row=2, column=0, sticky="w")
         self.rb2_fr0.grid(row=3, column=0, sticky="w")
-        self.rb3_fr0.grid(row=4, column=0, sticky="w")
 
     def ver_selec_tipo_graf(self, mostrar):
         if mostrar == 1:
@@ -126,21 +125,49 @@ class VentanaPrincipal(tk.Tk):
                                       text='Por día',
                                       variable=self.var_fr1, value=0,
                                       command=self.distribuidor_frame_1)
-        self.rb1_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes',
+        self.rb1_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes (suma)',
                                       variable=self.var_fr1, value=1,
                                       command=self.distribuidor_frame_1)
-        self.rb2_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por trimestre',
+        self.rb2_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes (promedio)',
                                       variable=self.var_fr1, value=2,
+                                      command=self.distribuidor_frame_1)
+        self.rb3_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por trimestre (suma)',
+                                      variable=self.var_fr1, value=3,
+                                      command=self.distribuidor_frame_1)
+        self.rb4_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por trimestre (promedio)',
+                                      variable=self.var_fr1, value=4,
                                       command=self.distribuidor_frame_1)
         self.rb0_fr1.grid(row=1, column=0, sticky="w")
         self.rb1_fr1.grid(row=2, column=0, sticky="w")
         self.rb2_fr1.grid(row=3, column=0, sticky="w")
+        self.rb3_fr1.grid(row=4, column=0, sticky="w")
+        self.rb4_fr1.grid(row=5, column=0, sticky="w")
+
+    def selec_vista_graf(self):
+        # Radio button para seleccionar total o porcentaje
+        self.fr_selec_2b = tk.Frame(self.fr_selec_2)
+        tex_2b = 'Ver las ausencias:'
+        self.lab_fr1 = tk.Label(self.fr_selec_2b, text=tex_2b)
+        self.lab_fr1.grid(row=0, column=0, sticky="w")
+
+        # Inicializo con total
+        self.var_fr2 = tk.IntVar(value=0)
+        self.rb0_fr2 = tk.Radiobutton(self.fr_selec_2b,
+                                      text='Abosulutas',
+                                      variable=self.var_fr2, value=0,
+                                      command=self.distribuidor_frame_2)
+        self.rb1_fr2 = tk.Radiobutton(self.fr_selec_2b, text='Proporcionales',
+                                      variable=self.var_fr2, value=1,
+                                      command=self.distribuidor_frame_2)
+        self.rb0_fr2.grid(row=1, column=0, sticky="w")
+        self.rb1_fr2.grid(row=2, column=0, sticky="w")
 
     def ver_selec_frec_graf(self, mostrar):
         if mostrar == 1:
             self.fr_selec_1b.pack()
         else:
             self.fr_selec_1b.pack_forget()
+            self.fr_selec_2b.pack_forget()
 
     # %% Funciones
 
@@ -180,21 +207,8 @@ class VentanaPrincipal(tk.Tk):
         self.menu_base.add_cascade(label='Agregar datos', menu=self.menu_nuevo)
         self.config(menu=self.menu_base)
 
-    def distribuidor_frame_0(self):
-        '''Asigna la funcion correcta segun la eleccion en el frame de la
-        izquierda'''
-        self.var_fr1.set(-1)
-        graf = self.var_fr0.get()
-        if graf == 0:
-            self.opciones_frecuencia(1)
-        elif graf == 1:
-            self.opciones_frecuencia(1)
-        elif graf == 2:
-            self.opciones_frecuencia(1)
-        elif graf == 3:
-            self.opciones_frecuencia(0)
-
     def distribuidor_frame_1(self):
+        # Frame de frecuencias
         '''Verifica que se haya cargado una base de datos y
         asigna la funcion correcta segun la eleccion en el frame de la
         izquierda'''
@@ -202,17 +216,37 @@ class VentanaPrincipal(tk.Tk):
         if hay_base == 'base_0':
             pass
         elif self.var_fr0.get() == 0:
+            self.fr_selec_2b.pack()
             self.mostrar_grafico(0)
         elif self.var_fr0.get() == 1:
+            self.fr_selec_2.pack_forget()
             self.mostrar_grafico(1)
         elif self.var_fr0.get() == 2:
+            self.fr_selec_2.pack_forget()
             self.mostrar_grafico(2)
 
-
-    def mostrar_grafico(self, tipo):
-        frec = self.var_fr1.get()
-        if self.var_fr0.get() in [0, 1, 2]:
+    def distribuidor_frame_2(self):
+        '''Verifica que se haya cargado la base
+        de datos de empleados para los graficos
+        de propocion. Asigna la funcion segun el 
+        radio button de vista'''
+        hay_base = utils.verif_base_datos('empleados')
+        if hay_base == 'base_0':
+            pass  # Evita el error si no hay base de empleados
+        elif self.var_fr0.get() == 0:  # Si el grafico es de ausencias totales
+            vista = self.var_fr2.get()
+            if vista == 0:
+                self.mostrar_grafico(0)
+            elif vista == 1:
+                self.mostrar_grafico(0, 1)
+            
+    def mostrar_grafico(self, tipo, vista=0):
+        frec = self.var_fr1.get()  # Frecuencia: dia, mes o trimestre
+        if vista == 0:
             figura = graficos.aus_simple_tiempo(frec, tipo)
+        
+        elif vista == 1:
+            figura = graficos.aus_simple_tiempo(frec, tipo, vista)
 
         # Limpiar el frame y mostrar el gráfico
         for widget in self.fr_graficos.winfo_children():
@@ -224,7 +258,7 @@ class VentanaPrincipal(tk.Tk):
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
-    def opciones_frecuencia(self, mostrar):
+    def opciones_frecuencia(self, mostrar=1):
         '''En caso que haya opciones de como graficar agrupando los datos
         por frecuencia, mostrar el frame de opciones de frecuencias'''
 
