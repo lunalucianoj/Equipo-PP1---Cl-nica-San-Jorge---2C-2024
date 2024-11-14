@@ -9,6 +9,7 @@ de la Clinica San Jorge (Ushuaia)
 """
 # %% Importaciones
 import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog as fd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -80,27 +81,32 @@ class VentanaPrincipal(tk.Tk):
         # Frame 0 (izquierda)
         self.fr_selec_0b = tk.Frame(self.fr_selec_0)
         tex_1 = 'Seleccione el gráfico que desea:'
-        self.lab_fr0 = tk.Label(self.fr_selec_0b, text=tex_1)
-        self.lab_fr0.grid(row=0, column=0, sticky="w")
+        self.lab_fr0 = tk.Label(self.fr_selec_0b, text=tex_1,
+                                bg='azure4',
+                                font=('Helvetica', 11))
+        self.lab_fr0.grid(row=0, column=0, sticky="ew")
 
         # Radio button para seleccionar tipo de grafico
+        style = ttk.Style(self)
+        style.configure('Custom.TRadiobutton',
+                        font=('Arial', 10))
         self.var_fr0 = tk.IntVar(value=-1)
-        self.rb0_fr0 = tk.Radiobutton(self.fr_selec_0b,
-                                      text='Ausencias totales',
-                                      variable=self.var_fr0, value=0,
-                                      command=self.opciones_frecuencia,
-                                      indicatoron = 1)
-        self.rb1_fr0 = tk.Radiobutton(self.fr_selec_0b,
-                                      text='Ausencias controlables' +
-                                      ' vs no controlables',
-                                      variable=self.var_fr0, value=1,
-                                      command=self.opciones_frecuencia,
-                                      indicatoron = 1)
-        self.rb2_fr0 = tk.Radiobutton(self.fr_selec_0b, text='Ausencias' +
-                                      ' justificadas vs injustificadas',
-                                      variable=self.var_fr0, value=2,
-                                      command=self.opciones_frecuencia,
-                                      indicatoron = 1)
+        self.rb0_fr0 = ttk.Radiobutton(self.fr_selec_0b,
+                                       text='Ausencias totales',
+                                       variable=self.var_fr0, value=0,
+                                       command=self.ver_selec_frec_graf,
+                                       style='Custom.TRadiobutton')
+        self.rb1_fr0 = ttk.Radiobutton(self.fr_selec_0b,
+                                       text='Ausencias controlables' +
+                                       ' vs no controlables',
+                                       variable=self.var_fr0, value=1,
+                                       command=self.ver_selec_frec_graf,
+                                       style='Custom.TRadiobutton')
+        self.rb2_fr0 = ttk.Radiobutton(self.fr_selec_0b, text='Ausencias' +
+                                       ' justificadas vs injustificadas',
+                                       variable=self.var_fr0, value=2,
+                                       command=self.ver_selec_frec_graf,
+                                       style='Custom.TRadiobutton')
         self.rb0_fr0.grid(row=1, column=0, sticky="w")
         self.rb1_fr0.grid(row=2, column=0, sticky="w")
         self.rb2_fr0.grid(row=3, column=0, sticky="w")
@@ -115,28 +121,34 @@ class VentanaPrincipal(tk.Tk):
         # Frame interior (1b)
         self.fr_selec_1b = tk.Frame(self.fr_selec_1)
         tex_2 = 'Seleccione la frecuencia:'
-        self.lab_fr1 = tk.Label(self.fr_selec_1b, text=tex_2)
+        self.lab_fr1 = tk.Label(self.fr_selec_1b, text=tex_2,
+                                bg='azure4',
+                                font=('Arial', 10, 'bold'))
         self.lab_fr1.grid(row=0, column=0, sticky="w")
 
         # Radio button para seleccionar frecuencia
         # Inicializo con un valor que no representa nada ("-1")
         self.var_fr1 = tk.IntVar(value=-1)
-        self.rb0_fr1 = tk.Radiobutton(self.fr_selec_1b,
-                                      text='Por día',
-                                      variable=self.var_fr1, value=0,
-                                      command=self.distribuidor_frame_1)
-        self.rb1_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes (suma)',
-                                      variable=self.var_fr1, value=1,
-                                      command=self.distribuidor_frame_1)
-        self.rb2_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por mes (promedio)',
-                                      variable=self.var_fr1, value=2,
-                                      command=self.distribuidor_frame_1)
-        self.rb3_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por trimestre (suma)',
-                                      variable=self.var_fr1, value=3,
-                                      command=self.distribuidor_frame_1)
-        self.rb4_fr1 = tk.Radiobutton(self.fr_selec_1b, text='Por trimestre (promedio)',
-                                      variable=self.var_fr1, value=4,
-                                      command=self.distribuidor_frame_1)
+        self.rb0_fr1 = ttk.Radiobutton(self.fr_selec_1b,
+                                       text='Por día',
+                                       variable=self.var_fr1, value=0,
+                                       command=self.distribuidor_frame_1)
+        self.rb1_fr1 = ttk.Radiobutton(self.fr_selec_1b,
+                                       text='Por mes (suma)',
+                                       variable=self.var_fr1, value=1,
+                                       command=self.distribuidor_frame_1)
+        self.rb2_fr1 = ttk.Radiobutton(self.fr_selec_1b,
+                                       text='Por mes (promedio)',
+                                       variable=self.var_fr1, value=2,
+                                       command=self.distribuidor_frame_1)
+        self.rb3_fr1 = ttk.Radiobutton(self.fr_selec_1b,
+                                       text='Por trimestre (suma)',
+                                       variable=self.var_fr1, value=3,
+                                       command=self.distribuidor_frame_1)
+        self.rb4_fr1 = ttk.Radiobutton(self.fr_selec_1b,
+                                       text='Por trimestre (promedio)',
+                                       variable=self.var_fr1, value=4,
+                                       command=self.distribuidor_frame_1)
         self.rb0_fr1.grid(row=1, column=0, sticky="w")
         self.rb1_fr1.grid(row=2, column=0, sticky="w")
         self.rb2_fr1.grid(row=3, column=0, sticky="w")
@@ -147,27 +159,29 @@ class VentanaPrincipal(tk.Tk):
         # Radio button para seleccionar total o porcentaje
         self.fr_selec_2b = tk.Frame(self.fr_selec_2)
         tex_2b = 'Ver las ausencias:'
-        self.lab_fr1 = tk.Label(self.fr_selec_2b, text=tex_2b)
+        self.lab_fr1 = tk.Label(self.fr_selec_2b, text=tex_2b,
+                                bg='azure4',
+                                font=('Arial', 10, 'bold'))
         self.lab_fr1.grid(row=0, column=0, sticky="w")
 
         # Inicializo con total
         self.var_fr2 = tk.IntVar(value=0)
-        self.rb0_fr2 = tk.Radiobutton(self.fr_selec_2b,
-                                      text='Abosulutas',
-                                      variable=self.var_fr2, value=0,
-                                      command=self.distribuidor_frame_2)
-        self.rb1_fr2 = tk.Radiobutton(self.fr_selec_2b, text='Proporcionales',
-                                      variable=self.var_fr2, value=1,
-                                      command=self.distribuidor_frame_2)
+        self.rb0_fr2 = ttk.Radiobutton(self.fr_selec_2b,
+                                       text='Absolutas',
+                                       variable=self.var_fr2, value=0,
+                                       command=self.distribuidor_frame_2)
+        self.rb1_fr2 = ttk.Radiobutton(self.fr_selec_2b, text='Proporcionales',
+                                       variable=self.var_fr2, value=1,
+                                       command=self.distribuidor_frame_2)
         self.rb0_fr2.grid(row=1, column=0, sticky="w")
         self.rb1_fr2.grid(row=2, column=0, sticky="w")
 
-    def ver_selec_frec_graf(self, mostrar):
-        if mostrar == 1:
-            self.fr_selec_1b.pack()
-        else:
-            self.fr_selec_1b.pack_forget()
+    def ver_selec_frec_graf(self):
+        self.fr_selec_1b.pack()
+        mostrar = self.var_fr0.get()
+        if mostrar in [1, 2]:
             self.fr_selec_2b.pack_forget()
+            self.var_fr2.set(0)
 
     # %% Funciones
 
@@ -195,16 +209,23 @@ class VentanaPrincipal(tk.Tk):
         self.focus()
         crear_db_empleados(ruta_tabla)
 
-
     def create_menu(self):
-        # Menu para agregar bases de datos
+        '''Menu para agregar bases de datos y ver creditos'''
         self.menu_base = tk.Menu(self)
-        self.menu_nuevo = tk.Menu(self.menu_base, tearoff=0)
-        self.menu_nuevo.add_command(
+        # Agregar tablas de certificados
+        self.menu_agregar = tk.Menu(self.menu_base, tearoff=0)
+        self.menu_agregar.add_command(
             label='Agregar tabla certificados', command=self.cargar_certif)
-        self.menu_nuevo.add_command(
+        self.menu_agregar.add_command(
             label='Agregar tabla empleados', command=self.cargar_empleados)
-        self.menu_base.add_cascade(label='Agregar datos', menu=self.menu_nuevo)
+        self.menu_base.add_cascade(label='Agregar datos', menu=self.menu_agregar)
+        self.config(menu=self.menu_base)
+
+        # Ver creditos del programa
+        self.menu_creditos = tk.Menu(self.menu_base, tearoff=0)
+        self.menu_creditos.add_command(
+            label='Créditos', command=self.ver_creditos)
+        self.menu_base.add_cascade(label='Creditos', menu=self.menu_creditos)
         self.config(menu=self.menu_base)
 
     def distribuidor_frame_1(self):
@@ -214,16 +235,30 @@ class VentanaPrincipal(tk.Tk):
         izquierda'''
         hay_base = utils.verif_base_datos('cert')
         if hay_base == 'base_0':
+            # En caso que no se haya cargado la tabla de certificados
             pass
         elif self.var_fr0.get() == 0:
-            self.fr_selec_2b.pack()
+            # Ausencias totales
             self.mostrar_grafico(0)
         elif self.var_fr0.get() == 1:
-            self.fr_selec_2.pack_forget()
+            # Controlables vs no controlables
+            self.fr_selec_2b.pack_forget()
+            self.var_fr2.set(0)
             self.mostrar_grafico(1)
         elif self.var_fr0.get() == 2:
-            self.fr_selec_2.pack_forget()
+            # Justificadas vs no justificadas
+            self.fr_selec_2b.pack_forget()
+            self.var_fr2.set(0)
             self.mostrar_grafico(2)
+        
+        # Solo ver ausencias proporcionales con frecuencia
+        # diaria o promedio
+        if self.var_fr0.get() == 0:
+            if self.var_fr1.get() in [0, 2, 4]:
+                self.fr_selec_2b.pack()
+            elif self.var_fr1.get() in [1, 3]:
+                self.fr_selec_2b.pack_forget()
+                self.var_fr2.set(0)
 
     def distribuidor_frame_2(self):
         '''Verifica que se haya cargado la base
@@ -234,6 +269,7 @@ class VentanaPrincipal(tk.Tk):
         if hay_base == 'base_0':
             pass  # Evita el error si no hay base de empleados
         elif self.var_fr0.get() == 0:  # Si el grafico es de ausencias totales
+            # Faltas absolutas o porcentuales
             vista = self.var_fr2.get()
             if vista == 0:
                 self.mostrar_grafico(0)
@@ -258,19 +294,32 @@ class VentanaPrincipal(tk.Tk):
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
-    def opciones_frecuencia(self, mostrar=1):
-        '''En caso que haya opciones de como graficar agrupando los datos
-        por frecuencia, mostrar el frame de opciones de frecuencias'''
-
-        if mostrar == 1:
-            self.ver_selec_frec_graf(1)
-        else:
-            self.ver_selec_frec_graf(0)
-
     def set_icon(self):
         # Cargar el icono de la parte superior izquierda 
         self.icon_image = tk.PhotoImage(file=logo)
         self.iconphoto(False, self.icon_image)
+
+    def ver_creditos(self):
+        '''Abrir una nueva ventana con
+        creditos de autores de este programa'''
+        self.creditos = tk.Toplevel(self)
+        self.creditos.title('Créditos')
+        self.creditos.geometry('500x145')
+        self.creditos.resizable(False, False)
+        self.creditos.iconphoto(False, self.icon_image)
+
+        self.frame_creditos = tk.Frame(self.creditos, bg='azure4')
+        self.frame_creditos.pack(expand=True, fill='both')
+
+        creditos = '''Autores:   Pablo Jusim (pablo.jusim@gmail.com)
+                    Stella Ventura
+                    Luciano Luna
+                    Ana Ramos
+                    Marcelo Renzone'''
+        lb_creditos = tk.Label(self.frame_creditos, text=creditos,
+                               justify='left', font=("Arial", 16),
+                               bg='azure4')
+        lb_creditos.pack(pady=10)
 
 
 # %% Funciones de labels
