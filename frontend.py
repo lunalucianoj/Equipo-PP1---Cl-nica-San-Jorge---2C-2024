@@ -15,6 +15,7 @@ from tkcalendar import DateEntry
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import graficos
+from graficos import ordenar_grafico
 import utils
 from datetime import datetime
 from database_setup import crear_db_cert, crear_db_empleados
@@ -94,6 +95,10 @@ class VentanaPrincipal(tk.Tk):
                                     height=alto_selec/2, width=ancho_pc/4)
         self.fr_selec_1 = tk.Frame(self.fr_selec, bg=color_fondo,
                                    height=alto_selec, width=ancho_pc/4)
+        self.fr_selec_10 = tk.Frame(self.fr_selec_1, bg=color_fondo,
+                                    height=alto_selec/2, width=ancho_pc/4)
+        self.fr_selec_11 = tk.Frame(self.fr_selec_1, bg=color_fondo,
+                                    height=alto_selec/2, width=ancho_pc/4)
         self.fr_selec_2 = tk.Frame(self.fr_selec, bg=color_fondo,
                                    height=alto_selec, width=ancho_pc/4)
         self.fr_selec_3 = tk.Frame(self.fr_selec, bg=color_fondo,
@@ -102,6 +107,8 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec_00.grid(row=0, column=0, sticky="nsew")
         self.fr_selec_01.grid(row=1, column=0, sticky="nsew")
         self.fr_selec_1.grid(row=0, column=1, sticky="nsew")
+        self.fr_selec_10.grid(row=0, column=0, sticky="nsew")
+        self.fr_selec_11.grid(row=1, column=0, sticky="nsew")
         self.fr_selec_2.grid(row=0, column=2, sticky="nsew")
         self.fr_selec_3.grid(row=0, column=3, sticky="nsew")
 
@@ -110,6 +117,7 @@ class VentanaPrincipal(tk.Tk):
         self.limitar_fechas()
         self.ver_selec_tipo_graf(1)
         self.selec_frec_graf()
+        self.selec_agrupamiento()
         self.selec_vista_graf()
 
     # %% Menus de radio buttom
@@ -127,7 +135,7 @@ class VentanaPrincipal(tk.Tk):
         style = ttk.Style(self)
         style.configure('Custom.TRadiobutton',
                         font=('Arial', 10))
-        self.var_fr0 = tk.IntVar(value=-1)
+        self.var_fr0 = tk.IntVar(value=0)
         self.rb0_fr0 = ttk.Radiobutton(self.fr_selec_0b,
                                        text='Ausencias totales',
                                        variable=self.var_fr0, value=0,
@@ -160,7 +168,8 @@ class VentanaPrincipal(tk.Tk):
         fin_default = datetime.strptime(fechas_data[1], '%Y-%m-%d')
 
         tex_1 = 'Seleccione las fecha de inicio del gráfico:'
-        self.lab_fr1a = tk.Label(self.fr_selec_01a, text=tex_1)
+        self.lab_fr1a = tk.Label(self.fr_selec_01a, text=tex_1,
+                                 bg = 'azure4', font=('Arial', 11))
         self.lab_fr1a.grid(row=0, column=0)
         self.dt_fecha_0 = DateEntry(
             self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
@@ -168,12 +177,13 @@ class VentanaPrincipal(tk.Tk):
             day=inicio_default.day)
         self.dt_fecha_0.grid(row=1, column=0)
 
-        tex_2a = '                                      '
-        self.lab_fr1a1 = tk.Label(self.fr_selec_01a, text=tex_2a)
+        tex_vacio = '                                      '
+        self.lab_fr1a1 = tk.Label(self.fr_selec_01a, text=tex_vacio)
         self.lab_fr1a1.grid(row=2, column=0)
         tex_2 = 'Seleccione las fecha de fin del gráfico:'
-        self.lab_fr1a2 = tk.Label(self.fr_selec_01a, text=tex_2)
-        self.lab_fr1a2.grid(row=3, column=0)
+        self.lab_fr1a2 = tk.Label(self.fr_selec_01a, text=tex_2,
+                                 bg = 'azure4', font=('Arial', 11))
+        self.lab_fr1a2.grid(row=3, column=0, sticky="ew")
         self.dt_fecha_1 = DateEntry(
             self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
             year=fin_default.year, month=fin_default.month,
@@ -198,7 +208,7 @@ class VentanaPrincipal(tk.Tk):
 
     def selec_frec_graf(self):
         # Frame interior (1b)
-        self.fr_selec_1b = tk.Frame(self.fr_selec_1)
+        self.fr_selec_1b = tk.Frame(self.fr_selec_10)
         tex_2 = 'Seleccione la frecuencia:'
         self.lab_fr1 = tk.Label(self.fr_selec_1b, text=tex_2,
                                 bg='azure4',
@@ -209,8 +219,7 @@ class VentanaPrincipal(tk.Tk):
         style = ttk.Style(self)
         style.configure('Custom.TRadiobutton',
                         font=('Arial', 10))
-        # Inicializo con un valor que no representa nada ("-1")
-        self.var_fr1 = tk.IntVar(value=-1)
+        self.var_fr1 = tk.IntVar(value=0)
         self.rb0_fr1 = ttk.Radiobutton(self.fr_selec_1b,
                                        text='Por día',
                                        variable=self.var_fr1, value=0,
@@ -242,6 +251,34 @@ class VentanaPrincipal(tk.Tk):
         self.rb3_fr1.grid(row=4, column=0, sticky="w")
         self.rb4_fr1.grid(row=5, column=0, sticky="w")
 
+    def selec_agrupamiento(self):
+        '''Inserta un radio button para elegir el tipo de agrupamiento
+        Output: 0 para suma
+                1 para promedio'''
+        self.fr_selec_11b = tk.Frame(self.fr_selec_11)
+        tex_2 = 'Seleccione el agrupamiento:'
+        self.lab_fr11b = tk.Label(self.fr_selec_11b, text=tex_2,
+                                bg='azure4',
+                                font=('Arial', 11))
+        self.lab_fr11b.grid(row=0, column=0, sticky="w")
+    
+        # Radio button para seleccionar frecuencia
+        style = ttk.Style(self)
+        style.configure('Custom.TRadiobutton',
+                        font=('Arial', 10))
+        self.var_fr11 = tk.IntVar(value=0)
+        self.rb0_fr11 = ttk.Radiobutton(self.fr_selec_11b,
+                                        text='Suma',
+                                        variable=self.var_fr11, value=0,
+                                        style='Custom.TRadiobutton')
+        self.rb1_fr11 = ttk.Radiobutton(self.fr_selec_11b,
+                                        text='Promedio',
+                                        variable=self.var_fr11, value=1,
+                                        style='Custom.TRadiobutton')
+
+        self.rb0_fr11.grid(row=1, column=0, sticky="w")
+        self.rb1_fr11.grid(row=2, column=0, sticky="w")
+
     def selec_vista_graf(self):
         # Radio button para seleccionar total o porcentaje
         style = ttk.Style(self)
@@ -270,6 +307,7 @@ class VentanaPrincipal(tk.Tk):
 
     def ver_selec_frec_graf(self):
         self.fr_selec_1b.pack()
+        self.fr_selec_11b.pack()
         mostrar = self.var_fr0.get()
         if mostrar in [1, 2]:
             self.fr_selec_2b.pack_forget()
@@ -371,7 +409,7 @@ class VentanaPrincipal(tk.Tk):
 # %% Funciones de graficos
 
     def realizar_grafico(self):
-        pass
+        self.mostrar_grafico_2()
 
     def mostrar_grafico(self, tipo, vista=0):
         frec = self.var_fr1.get()  # Frecuencia: dia, mes o trimestre
@@ -382,6 +420,29 @@ class VentanaPrincipal(tk.Tk):
             figura = graficos.aus_simple_tiempo(frec, tipo, vista)
 
         # Limpiar el frame y mostrar el gráfico
+        for widget in self.fr_graficos.winfo_children():
+            widget.destroy()
+        plt.close('all')
+   
+        # Convertir figura a un Canvas de Tkinter y empaquetarlo en el frame
+        canvas = FigureCanvasTkAgg(figura, master=self.fr_graficos)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    def mostrar_grafico_2(self):
+        tipo = self.var_fr0.get()
+        frec = self.var_fr1.get()
+        agrup = self.var_fr11.get()
+        vista = self.var_fr2.get()
+        f_min1 = self.dt_fecha_0.get()
+        f_max1 = self.dt_fecha_1.get()
+        f_min = datetime.strptime(f_min1, '%d/%m/%Y').date()
+        f_max = datetime.strptime(f_max1, '%d/%m/%Y').date()
+
+        figura = graficos.ordenar_grafico(
+            tipo, frec, agrup, vista, f_min, f_max)
+
+        # Limpiar el frame
         for widget in self.fr_graficos.winfo_children():
             widget.destroy()
         plt.close('all')

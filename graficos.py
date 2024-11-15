@@ -6,6 +6,19 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from database_setup import abrir_bd, cerrar_bd
 
+# %% Funcion principal de orden
+
+def ordenar_grafico(tipo, frec, agrup, vista, f_min, f_max):
+    '''Esta funcion centraliza la creacion de cualquier grafico
+    Llama a las funciones correspondientes segun el grafico
+    Output: Grafico creado para pasar a frontend'''
+    # Levantar data entre fechas inidicadas
+    fechas_data = levantar_fechas(f_min, f_max)
+    fechas_tipo = fechas_por_tipo(fechas_data, tipo)
+    fechas_frec_agrup = fechas_por_fecha_agrup(fechas_tipo, frec, agrup)
+    print(fechas_frec_agrup)
+
+
 # %% Funciones para organizar
 
 
@@ -228,8 +241,60 @@ def preparar_graf_2(fechas):
     return fig, ax
 
 
-# %% Consultas SQL
+# %% Organizar datos para graficar
 
+
+def levantar_fechas(f_min, f_max):
+    '''Consulta SQL para obtener las fechas de ausencia
+    según los límites de fechas indicados'''
+    sql = '''SELECT *
+            FROM ausencias
+            WHERE fecha BETWEEN ? AND ?
+            ORDER BY fecha'''
+    _, cur = abrir_bd()
+    cur.execute(sql, (f_min, f_max))
+    fechas = cur.fetchall()
+    cerrar_bd()
+    # Convertir fechas_data a pandas data frame
+    fechas_data = pd.DataFrame(fechas, columns=[
+        'Fecha', 'justificado', 'no_justificado', 'no_controlable'])
+    return fechas_data
+
+
+def fechas_por_tipo(fechas_data, tipo):
+    '''Ordenar las ausencias por tipo de gráfico'''
+    if tipo == 0:  # Ausencias totales
+        fechas_data['total_ausencias'] = fechas_data['justificado'] +\
+            fechas_data['no_justificado'] + fechas_data['no_controlable']
+    elif tipo == 1:  # Ausencias controlables vs no
+        fechas_data['controlables'] = fechas_data['justificado'] +\
+            fechas_data['no_justificado']
+    elif tipo == 2:  # Ausencias justificadas vs no
+        pass
+    return fechas_data
+
+
+def fechas_por_fecha_agrup(fechas, frec, agrup):
+    '''Agrupar las ausencias según la frecuecia determinada.
+       El agrupamiento es mediante suma o promedio'''
+    fechas_agrupadas = None  # Inicializo la variable
+
+    if frec == 0:  # Agrupar por día
+        fechas_agrupadas = fechas
+    elif frec == 1 and agrup == 0:  # Agrupar suma por mes
+        fechas.set_index('Fecha', inplace=True)
+        fechas_agrupadas = fechas.resample('ME').sum().reset_index()
+    elif frec == 1 and agrup == 1:  # Agrupar promedio por mes
+        fechas.set_index('Fecha', inplace=True)
+        fechas_agrupadas = fechas.resample('ME').mean().reset_index()
+    elif frec == 2 and agrup == 0:  # Agrupar suma por trimestre
+        fechas.set_index('Fecha', inplace=True)
+        fechas_agrupadas = fechas.resample('QE').sum().reset_index()
+    elif frec == 2 and agrup == 1:  # Agrupar promedio por trimestre
+        fechas.set_index('Fecha', inplace=True)
+        fechas_agrupadas = fechas.resample('QE').mean().reset_index()
+
+    return fechas_agrupadas
 
 def sql_aus_simple_tiempo():
     sql = '''SELECT *
