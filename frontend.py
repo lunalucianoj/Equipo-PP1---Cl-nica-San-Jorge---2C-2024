@@ -16,7 +16,9 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import graficos
 import utils
+from datetime import datetime
 from database_setup import crear_db_cert, crear_db_empleados
+from database_setup import abrir_bd, cerrar_bd
 
 # %% Estilo
 
@@ -35,7 +37,9 @@ class VentanaPrincipal(tk.Tk):
 
         self.title('Análisis de ausencias Clínica San Jorge')
         self['bg'] = color_fondo
+        global ancho_pc
         ancho_pc = self.winfo_screenwidth()  # Ancho de la pantalla
+        global alto_pc
         alto_pc = self.winfo_screenheight()  # Alto de la pantalla
         self.geometry(f'{ancho_pc}x{alto_pc}')
 
@@ -57,10 +61,26 @@ class VentanaPrincipal(tk.Tk):
                                    ' los certificados')
         self.cartel_area_graf()
 
+        # Marco para las opciones
+        alto_opciones = alto_pc*0.4
+        self.fr_opciones = tk.Frame(self, bg=color_fondo, height=alto_opciones)
+        self.fr_opciones.pack(side="bottom", fill="x")
+
+        # Boton para graficar
+        self.fr_boton = tk.Frame(self.fr_opciones, bg='azure3',
+                                 height=alto_opciones*0.2)
+        self.fr_boton.pack(fill='x')
+
+        self.bt_graficar = tk.Button(self.fr_boton, text='Graficar',
+                                     command=self.realizar_grafico,
+                                     bg='azure3', font=('Arial', 11))
+        self.bt_graficar.pack()
+
         # Marco para los seleccionadores
-        alto_selec = alto_pc*0.4
-        self.fr_selec = tk.Frame(self, bg=color_fondo, height=alto_selec)
-        self.fr_selec.pack(side="bottom", fill="x")
+        alto_selec = alto_opciones*0.8
+        self.fr_selec = tk.Frame(self.fr_opciones, bg=color_fondo,
+                                 height=alto_selec)
+        self.fr_selec.pack(fill='x')
 
         # Marcos para los menus de seleccion
         ''' 4 menus consecutivos (0 a 3) de izquierda a derecha.
@@ -133,12 +153,42 @@ class VentanaPrincipal(tk.Tk):
         fechas mínima y máxima en el gráfico'''
         # Frame 01 (izquierda abajo)
         self.fr_selec_01a = tk.Frame(self.fr_selec_01)
+        self.fr_selec_01a.pack(pady=(alto_pc/22, 0))
+
+        fechas_data = self.revisar_fechas()
+        inicio_default = datetime.strptime(fechas_data[0], '%Y-%m-%d')
+        fin_default = datetime.strptime(fechas_data[1], '%Y-%m-%d')
+
         tex_1 = 'Seleccione las fecha de inicio del gráfico:'
-        tex_2 = 'Seleccione las fecha de fin del gráfico:'
+        self.lab_fr1a = tk.Label(self.fr_selec_01a, text=tex_1)
+        self.lab_fr1a.grid(row=0, column=0)
         self.dt_fecha_0 = DateEntry(
-            self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR'
-        )
+            self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
+            year=inicio_default.year, month=inicio_default.month,
+            day=inicio_default.day)
         self.dt_fecha_0.grid(row=1, column=0)
+
+        tex_2a = '                                      '
+        self.lab_fr1a1 = tk.Label(self.fr_selec_01a, text=tex_2a)
+        self.lab_fr1a1.grid(row=2, column=0)
+        tex_2 = 'Seleccione las fecha de fin del gráfico:'
+        self.lab_fr1a2 = tk.Label(self.fr_selec_01a, text=tex_2)
+        self.lab_fr1a2.grid(row=3, column=0)
+        self.dt_fecha_1 = DateEntry(
+            self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
+            year=fin_default.year, month=fin_default.month,
+            day=fin_default.day)
+        self.dt_fecha_1.grid(row=4, column=0)
+
+    def revisar_fechas(self):
+        '''Resvisa y devuelve las fechas extremas de las ausencias'''
+        sql = '''SELECT min(fecha) as inicio, max(fecha) as fin
+                 FROM ausencias'''
+        _, cur = abrir_bd()
+        cur.execute(sql)
+        fechas = cur.fetchall()[0]
+        cerrar_bd()
+        return fechas
 
     def ver_selec_tipo_graf(self, mostrar):
         if mostrar == 1:
@@ -317,7 +367,12 @@ class VentanaPrincipal(tk.Tk):
                 self.mostrar_grafico(0)
             elif vista == 1:
                 self.mostrar_grafico(0, 1)
-            
+
+# %% Funciones de graficos
+
+    def realizar_grafico(self):
+        pass
+
     def mostrar_grafico(self, tipo, vista=0):
         frec = self.var_fr1.get()  # Frecuencia: dia, mes o trimestre
         if vista == 0:
