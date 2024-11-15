@@ -149,7 +149,6 @@ def preparar_graf_0(fechas):
     '''Crea los graficos de ausencias totales 
     que se van a usar en el frontend.'''
 
-    fechas.fillna(0, inplace=True)
     # Agregar una nueva columna 'total_ausencias' que sea la suma de las
     # columnas
     fechas['total_ausencias'] = fechas['justificado'] +\
@@ -168,7 +167,6 @@ def preparar_graf_0_porc(fechas):
     que se van a usar en el frontend.
     Usa porcentaje de ausencias'''
 
-    fechas.fillna(0, inplace=True)
     # Agregar una nueva columna 'total_ausencias' que sea la suma de las
     # columnas
     fechas['total_ausencias'] = fechas['justificado'] +\
@@ -178,7 +176,6 @@ def preparar_graf_0_porc(fechas):
     conn, cur = abrir_bd()
     cur.execute('SELECT COUNT(nro_legajo) FROM empleados')
     nro_empleados = cur.fetchone()[0]
-    print(nro_empleados)
     cerrar_bd()
     fechas['total_ausencias_porc'] = (fechas['total_ausencias'] /
                                       nro_empleados) * 100
@@ -194,7 +191,6 @@ def preparar_graf_1(fechas):
     '''Crea los graficos de ausencias controlables vs no controlables
     que se van a usar en el frontend.'''
 
-    fechas.fillna(0, inplace=True)
     # Agregar una nueva columna 'controlables' que sea la suma
     # de las justificadas y las no justificadas
     fechas['controlables'] = fechas['justificado'] + fechas['no_justificado']
@@ -217,7 +213,6 @@ def preparar_graf_2(fechas):
     '''Crea los graficos de ausencias justificadas vs no justificadas 
     que se van a usar en el frontend.'''
 
-    fechas.fillna(0, inplace=True)
 
     # Crear la figura y el eje
     fig, ax = plt.subplots(figsize=(10, 4))

@@ -9,7 +9,7 @@ ejecutar análisis.
 import os
 from frontend import VentanaPrincipal
 
-
+  
 def set_working_directory():
     """Set the current working directory to the directory of the script."""
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

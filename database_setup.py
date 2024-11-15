@@ -19,6 +19,7 @@ def abrir_excel(ruta):
     base_df = pd.read_excel(ruta)
     return base_df
 
+
 # %% Creacion de base de datos SQL
 
 
@@ -74,10 +75,10 @@ def crear_base():
     
     # Crear tabla de ausencias
     cur.execute('''CREATE TABLE IF NOT EXISTS ausencias
-                 (fecha              DATA            PRIMARY KEY,
-                  justificado        INT,
-                  no_justificado     INT,
-                  no_controlable     INT
+                 (fecha              DATA          PRIMARY KEY,
+                  justificado        INT           DEFAULT 0,
+                  no_justificado     INT           DEFAULT 0,
+                  no_controlable     INT           DEFAULT 0
                 );''')
 
     # Crear indices
@@ -178,7 +179,7 @@ def limpieza_db(ruta):
     base_df = abrir_excel(ruta)
     # Convertir las fechas al formato correcto
     base_df['Validez_Desde'] = pd.to_datetime(base_df['Validez_Desde'],
-                                            dayfirst=True, errors='coerce')
+                                              dayfirst=True, errors='coerce')
 
     # Eliminar certificados de duracion menor a 1 (dias)
     base_df = base_df[base_df['Dias'] >= 1]
@@ -309,7 +310,15 @@ def organizar_ausencias():
     datos = sql_ausencias()
     df = pd.DataFrame(datos, columns=[
         'validez_dde', 'validez_hta', 'agrupadores', 'tipo_cert'])
-    contador_fechas = crear_dic_fechas(df)
+    # Ver tipo de certificado de ausencias injustificadas
+    abrir_bd()
+    sql = '''SELECT id_tc
+             FROM tcd
+             WHERE tc_detalle = 'Ausencia Injustificada' '''
+    cur.execute(sql)
+    tipo_injus = cur.fetchone()[0]
+    cerrar_bd()
+    contador_fechas = crear_dic_fechas(df, tipo_injus)
 
     # Insertar los resultados en la tabla de ausencias
     insertar_ausencias(contador_fechas['justificado'], 'justificado')
@@ -337,7 +346,7 @@ def sql_con_ausencias(consulta):
     return fechas_certificados
 
 # Función para crear diccionarios de fechas clasificadas
-def crear_dic_fechas(df):
+def crear_dic_fechas(df, tipo_injus):
     contador_fechas = {'justificado': Counter(),
                        'no_justificado': Counter(),
                        'no_controlable': Counter() 
@@ -346,7 +355,7 @@ def crear_dic_fechas(df):
     for _, row in df.iterrows():
         rango_fechas = pd.date_range(start=row['validez_dde'],
                                      end=row['validez_hta'])
-        if row['tipo_cert'] == 4:
+        if row['tipo_cert'] == tipo_injus:
             contador_fechas['no_justificado'].update(rango_fechas)
         elif row['agrupadores'] == 0:
             contador_fechas['justificado'].update(rango_fechas)
@@ -354,8 +363,10 @@ def crear_dic_fechas(df):
             contador_fechas['no_controlable'].update(rango_fechas)
     return contador_fechas
 
+
 # Función para insertar las ausencias en la tabla SQL
 def insertar_ausencias(contador_fechas, categoria):
+    '''Agrega los datos de ausencias en la tabla "ausencias" de sql'''
     abrir_bd()
     for fecha, cantidad in contador_fechas.items():
         fecha_str = fecha.strftime('%Y-%m-%d')
