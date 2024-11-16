@@ -8,15 +8,31 @@ from database_setup import abrir_bd, cerrar_bd
 
 # %% Funcion principal de orden
 
-def ordenar_grafico(tipo, frec, agrup, vista, f_min, f_max):
+
+def ordenar_datos_grafico(tipo, frec, agrup, vista, f_min, f_max, medidas):
     '''Esta funcion centraliza la creacion de cualquier grafico
     Llama a las funciones correspondientes segun el grafico
     Output: Grafico creado para pasar a frontend'''
     # Levantar data entre fechas inidicadas
     fechas_data = levantar_fechas(f_min, f_max)
     fechas_tipo = fechas_por_tipo(fechas_data, tipo)
-    fechas_frec_agrup = fechas_por_fecha_agrup(fechas_tipo, frec, agrup)
-    print(fechas_frec_agrup)
+    fechas_frec_agrup = fechas_por_agrup(fechas_tipo, frec, agrup)
+    fechas_vista = fechas_por_vista(fechas_frec_agrup, vista)
+
+    # Hacer los graficos
+    figura = ordenar_grafico(fechas_vista, tipo, agrup, vista, medidas, frec)
+
+    return figura
+
+
+def ordenar_grafico(fechas, tipo, agrup, vista, medidas, frec):
+    '''Centraliza los llamados a las funciones que
+    hacen cada paso de los graficos'''
+    figura_base = preparar_base(medidas)
+    fig_con_data = agregar_datos(figura_base, fechas, tipo)
+    fig_eje_x = poner_eje_x(fig_con_data, fechas, frec)
+    fig_eje_y = poner_eje_y(fig_eje_x, agrup, vista)
+    return fig_eje_y[0]
 
 
 # %% Funciones para organizar
@@ -237,7 +253,6 @@ def preparar_graf_2(fechas):
             marker=None, linestyle='-')
     # Mostrar la leyenda
     ax.legend()
-
     return fig, ax
 
 
@@ -258,6 +273,8 @@ def levantar_fechas(f_min, f_max):
     # Convertir fechas_data a pandas data frame
     fechas_data = pd.DataFrame(fechas, columns=[
         'Fecha', 'justificado', 'no_justificado', 'no_controlable'])
+    # Asegurarse de que sean datetime
+    fechas_data['Fecha'] = pd.to_datetime(fechas_data['Fecha'])
     return fechas_data
 
 
@@ -274,11 +291,10 @@ def fechas_por_tipo(fechas_data, tipo):
     return fechas_data
 
 
-def fechas_por_fecha_agrup(fechas, frec, agrup):
+def fechas_por_agrup(fechas, frec, agrup):
     '''Agrupar las ausencias según la frecuecia determinada.
        El agrupamiento es mediante suma o promedio'''
     fechas_agrupadas = None  # Inicializo la variable
-
     if frec == 0:  # Agrupar por día
         fechas_agrupadas = fechas
     elif frec == 1 and agrup == 0:  # Agrupar suma por mes
@@ -296,6 +312,23 @@ def fechas_por_fecha_agrup(fechas, frec, agrup):
 
     return fechas_agrupadas
 
+
+def fechas_por_vista(fechas, vista):
+    '''Ordena los datos para ver ausencias totales (no hace nada)
+    o porcentaje de ausencias (segun empleados totales)'''
+    if vista == 0:  # Ausencias totales
+        pass  # Para devolver las fechas como estaban
+    elif vista == 1:  # Ausencias percentuales
+        # Contar la cantidad de empleados
+        _, cur = abrir_bd()
+        cur.execute('SELECT COUNT(nro_legajo) FROM empleados')
+        nro_empleados = cur.fetchone()[0]
+        cerrar_bd()
+        fechas['total_ausencias'] = (fechas['total_ausencias'] /
+                                          nro_empleados) * 100
+    return fechas
+
+
 def sql_aus_simple_tiempo():
     sql = '''SELECT *
              FROM ausencias
@@ -307,10 +340,103 @@ def sql_varias_filas(consulta):
     '''Ejecuta la consulta sql que se indique
     Input: consulta sql escrita correctamente
     Output: Lo que devuelva la base de datos'''
-    conn, cur = abrir_bd()
+    _, cur = abrir_bd()
     cur.execute(consulta)
     inicio_certificados = cur.fetchall()
     cerrar_bd()
     return inicio_certificados
 
-# %% Funciones auxiliares para los graficos
+# %% Hacer graficos
+
+
+def preparar_base(medidas):
+    '''Creo una figura vacia del tamaño buscado'''
+    ancho1, alto1 = medidas  # pixeles
+    ancho = ancho1 / 100
+    alto = (alto1 / 100)
+    fig, ax = plt.subplots(figsize=(ancho, alto))  # en pulgadas
+    fig.subplots_adjust(bottom=0.2)
+    return fig, ax
+
+
+def agregar_datos(figura_base, fechas, tipo):
+    '''Agrega los datos a la figura base'''
+    fig, eje = figura_base
+    eje_x = fechas['Fecha']
+    if tipo == 0:  # Ausencias totales
+        eje.plot(eje_x, fechas['total_ausencias'],
+                 label='Ausencias totales',
+                 marker=None, linestyle='-')
+    elif tipo == 1:  # controlables vs no
+        eje.plot(eje_x, fechas['controlables'],
+                 label='Ausencias controlables',
+                 marker=None, linestyle='-')
+        eje.plot(eje_x, fechas['no_controlable'],
+                 label='Ausencias no controlables',
+                 marker=None, linestyle='-')
+    elif tipo == 2:  # justificadas vs no
+        eje.plot(eje_x, fechas['justificado'],
+                 label='Ausencias justificadas',
+                 marker=None, linestyle='-')
+        eje.plot(eje_x, fechas['no_justificado'],
+                 label='Ausencias no justificadas',
+                 marker=None, linestyle='-')
+
+    # Mostrar la leyenda
+    eje.legend()
+    return fig, eje
+
+
+def poner_eje_x(figura, fechas, frec):
+    '''Establece que se muestra en el eje x segun el
+    tipo de grafico. También el título de gráfico'''
+    fig, eje = figura
+    labels = None
+    if frec == 0:
+        eje.set_title('Ausencias por Día')  # título grafico
+        primer_dia = fechas[fechas['Fecha'].dt.is_month_start]['Fecha']
+        eje.set_xlabel('Fecha')
+        eje.set_xticks(primer_dia)
+        eje.set_xticklabels(primer_dia.dt.strftime('%Y-%m-%d'),
+                           rotation=45, ha='right')
+        for x in primer_dia:
+            plt.axvline(x=x, linestyle='-', linewidth=0.4, color='lightgrey')
+    elif frec == 1:
+        eje.set_title('Ausencias por Mes')  # título grafico
+        eje.set_xlabel('Mes')
+        eje.set_xticks(fechas['Fecha'])
+        eje.set_xticklabels(fechas['Fecha'].dt.strftime('%Y-%m'),
+                            rotation=45, ha='right')
+        for x in fechas['Fecha']:
+            plt.axvline(x=x, linestyle='-', linewidth=0.4, color='lightgrey')
+    elif frec == 2:
+        eje.set_title('Ausencias por Trimestre')  # título grafico
+        trimestres = fechas['Fecha']
+        labels = [f'Trimestre {date.quarter} {
+            date.year}' for date in trimestres]
+        for x in trimestres:
+            plt.axvline(x=x, linestyle='-', linewidth=0.4, color='lightgrey')
+        eje.set_xticklabels(labels, ha='right')
+        eje.set_xticklabels(labels, rotation=35)
+        eje.xaxis.set_tick_params(pad=10)
+
+    return fig, eje
+
+
+def poner_eje_y(figura, agrup, vista):
+    '''Fija el título del eje Y y la forma de
+    mostrar los valores'''
+    fig, eje = figura
+    if vista == 0:  # Ausencias totales
+        if agrup == 0:  # Suma de ausencias
+            eje.set_ylabel('Ausencias totales')
+        elif agrup == 1:  # Promedio de ausencias
+            eje.set_ylabel('Ausencias medias')
+    elif vista == 1:  # Porcentaje de ausencias
+        eje.yaxis.set_major_formatter(mtick.PercentFormatter())
+        if agrup == 0:  # Suma de ausencias
+            eje.set_ylabel('Porcentaje de ausencias totales')
+        elif agrup == 1:  # Promedio de ausencias
+            eje.set_ylabel('Porcentaje de ausencias medias')
+
+    return fig, eje

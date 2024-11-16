@@ -10,14 +10,14 @@ de la Clinica San Jorge (Ushuaia)
 # %% Importaciones
 import tkinter as tk
 from tkinter import ttk
+from datetime import datetime
 from tkinter import filedialog as fd
 from tkcalendar import DateEntry
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from graficos import ordenar_datos_grafico
 import graficos
-from graficos import ordenar_grafico
 import utils
-from datetime import datetime
 from database_setup import crear_db_cert, crear_db_empleados
 from database_setup import abrir_bd, cerrar_bd
 
@@ -56,10 +56,14 @@ class VentanaPrincipal(tk.Tk):
         alto_graf = alto_pc*0.6
         self.fr_graficos = tk.Frame(self, bg=color_fondo, height=alto_graf)
         self.fr_graficos.pack(side="top", fill="x")
+        # Configurar el frame para evitar que el contenido se expanda más
+        # allá de su tamaño
+        self.fr_graficos.pack_propagate(False)
         # Indicar que falta base de datos
         self.la_falta_excel = tk.Label(
             self.fr_graficos, text='Por favor cargue la tabla de Excel con' +
-                                   ' los certificados')
+                                   ' los certificados',
+                                   font=('Arial', 14))
         self.cartel_area_graf()
 
         # Marco para las opciones
@@ -112,7 +116,7 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec_2.grid(row=0, column=2, sticky="nsew")
         self.fr_selec_3.grid(row=0, column=3, sticky="nsew")
 
-        # Menues de seleccion
+        # Colocar menues de seleccion (radio button)
         self.selec_tipo_graf()
         self.limitar_fechas()
         self.ver_selec_tipo_graf(1)
@@ -258,8 +262,8 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec_11b = tk.Frame(self.fr_selec_11)
         tex_2 = 'Seleccione el agrupamiento:'
         self.lab_fr11b = tk.Label(self.fr_selec_11b, text=tex_2,
-                                bg='azure4',
-                                font=('Arial', 11))
+                                  bg='azure4',
+                                  font=('Arial', 11))
         self.lab_fr11b.grid(row=0, column=0, sticky="w")
     
         # Radio button para seleccionar frecuencia
@@ -438,9 +442,10 @@ class VentanaPrincipal(tk.Tk):
         f_max1 = self.dt_fecha_1.get()
         f_min = datetime.strptime(f_min1, '%d/%m/%Y').date()
         f_max = datetime.strptime(f_max1, '%d/%m/%Y').date()
+        medidas = (ancho_pc, alto_pc)
 
-        figura = graficos.ordenar_grafico(
-            tipo, frec, agrup, vista, f_min, f_max)
+        figura = ordenar_datos_grafico(
+            tipo, frec, agrup, vista, f_min, f_max, medidas)
 
         # Limpiar el frame
         for widget in self.fr_graficos.winfo_children():
