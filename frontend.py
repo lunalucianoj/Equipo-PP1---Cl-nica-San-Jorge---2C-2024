@@ -53,7 +53,7 @@ class VentanaPrincipal(tk.Tk):
         self.create_menu()
 
         # Marco para los graficos
-        alto_graf = alto_pc*0.6
+        alto_graf = alto_pc*0.5
         self.fr_graficos = tk.Frame(self, bg=COLOR_FONDO, height=alto_graf)
         self.fr_graficos.pack(side="top", fill="x")
         # Configurar el frame para evitar que el contenido se expanda más
@@ -67,13 +67,12 @@ class VentanaPrincipal(tk.Tk):
         self.cartel_area_graf()
 
         # Marco para las opciones
-        alto_opciones = alto_pc*0.4
+        alto_opciones = alto_pc*0.5
         self.fr_opciones = tk.Frame(self, bg=COLOR_FONDO, height=alto_opciones)
         self.fr_opciones.pack(side="bottom", fill="x")
 
         # Boton para graficar
-        self.fr_boton = tk.Frame(self.fr_opciones, bg='azure3',
-                                 height=alto_opciones*0.2)
+        self.fr_boton = tk.Frame(self.fr_opciones, bg='azure3')
         self.fr_boton.pack(fill='x')
 
         self.bt_graficar = tk.Button(self.fr_boton, text='Graficar',
@@ -82,10 +81,10 @@ class VentanaPrincipal(tk.Tk):
         self.bt_graficar.pack()
 
         # Marco para los seleccionadores
-        alto_selec = alto_opciones*0.8
+        alto_selec = alto_opciones*0.9
         self.fr_selec = tk.Frame(self.fr_opciones, bg=COLOR_FONDO,
                                  height=alto_selec)
-        self.fr_selec.pack(fill='x')
+        self.fr_selec.pack(fill='both')
 
         # Marcos para los menus de seleccion
         # 4 menus consecutivos (0 a 3) de izquierda a derecha.
@@ -116,9 +115,9 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec_2.grid(row=0, column=2, sticky="nsew")
         self.fr_selec_3.grid(row=0, column=3, sticky="nsew")
 
-
         # Colocar menues de seleccion (radio button)
         self.selec_tipo_graf()
+        self.tipo_grafico()
         self.limitar_fechas()
         self.selec_frec_graf()
         self.selec_agrupamiento()
@@ -130,9 +129,9 @@ class VentanaPrincipal(tk.Tk):
     def selec_tipo_graf(self):
         '''Frame 00 (izquierda arriba)
         Selecciona el tipo de grafico'''
-        self.fr_selec_0b = tk.Frame(self.fr_selec_00)
+        self.fr_selec_0a = tk.Frame(self.fr_selec_00)
         tex_1 = 'Seleccione el gráfico que desea:'
-        self.lab_fr0 = tk.Label(self.fr_selec_0b, text=tex_1,
+        self.lab_fr0 = tk.Label(self.fr_selec_0a, text=tex_1,
                                 bg='azure4',
                                 font=('Arial', 11))
         self.lab_fr0.grid(row=0, column=0, sticky="ew")
@@ -142,18 +141,18 @@ class VentanaPrincipal(tk.Tk):
         style.configure('Custom.TRadiobutton',
                         font=('Arial', 10))
         self.var_fr0 = tk.IntVar(value=0)
-        self.rb0_fr0 = ttk.Radiobutton(self.fr_selec_0b,
+        self.rb0_fr0 = ttk.Radiobutton(self.fr_selec_0a,
                                        text='Ausencias totales',
                                        variable=self.var_fr0, value=0,
                                        command=self.mostrar_menu_vista,
                                        style='Custom.TRadiobutton')
-        self.rb1_fr0 = ttk.Radiobutton(self.fr_selec_0b,
+        self.rb1_fr0 = ttk.Radiobutton(self.fr_selec_0a,
                                        text='Ausencias controlables' +
                                        ' vs no controlables',
                                        variable=self.var_fr0, value=1,
                                        command=self.mostrar_menu_vista,
                                        style='Custom.TRadiobutton')
-        self.rb2_fr0 = ttk.Radiobutton(self.fr_selec_0b, text='Ausencias' +
+        self.rb2_fr0 = ttk.Radiobutton(self.fr_selec_0a, text='Ausencias' +
                                        ' justificadas vs injustificadas',
                                        variable=self.var_fr0, value=2,
                                        command=self.mostrar_menu_vista,
@@ -162,12 +161,36 @@ class VentanaPrincipal(tk.Tk):
         self.rb1_fr0.grid(row=2, column=0, sticky="w")
         self.rb2_fr0.grid(row=3, column=0, sticky="w")
 
+    def tipo_grafico(self):
+        '''Agregar un menu para elegir entre gráficos
+        en el tiempo o por departamento'''
+        self.fr_selec_0b = tk.Frame(self.fr_selec_01)
+        tex_1 = 'Seleccione el tipo de gráfico:'
+        self.lab_fr0b = tk.Label(self.fr_selec_0b, text=tex_1,
+                                 bg='azure4',
+                                 font=('Arial', 11))
+        self.lab_fr0b.grid(row=0, column=0, sticky="ew")
+
+        self.var_fr0b = tk.IntVar(value=0)
+        self.rb0_fr0b = ttk.Radiobutton(self.fr_selec_0b,
+                                        text='Por tiempo',
+                                        variable=self.var_fr0b, value=0,
+                                        command=self.mostrar_menu_vista,
+                                        style='Custom.TRadiobutton')
+        self.rb1_fr0b = ttk.Radiobutton(self.fr_selec_0b,
+                                        text='Por departamento',
+                                        variable=self.var_fr0b, value=1,
+                                        command=self.mostrar_menu_vista,
+                                        style='Custom.TRadiobutton')
+        self.rb0_fr0b.grid(row=1, column=0, sticky="w")
+        self.rb1_fr0b.grid(row=2, column=0, sticky="w") 
+
     def limitar_fechas(self):
         '''Agrega un menu en el que se pueden seleccionar las
         fechas mínima y máxima en el gráfico'''
         # Frame 01 (izquierda abajo)
-        self.fr_selec_01a = tk.Frame(self.fr_selec_01)
-        self.fr_selec_01a.pack(pady=(alto_pc/22, 0))
+        self.fr_selec_01a = tk.Frame(self.fr_selec_3)
+        self.fr_selec_01a.grid(row=0, column=0)
 
         fechas_data = self.revisar_fechas()
         inicio_default = datetime.strptime(fechas_data[0], '%Y-%m-%d')
@@ -195,6 +218,8 @@ class VentanaPrincipal(tk.Tk):
             year=fin_default.year, month=fin_default.month,
             day=fin_default.day)
         self.dt_fecha_1.grid(row=4, column=0)
+        self.lab_fr1a2 = tk.Label(self.fr_selec_01a, text=tex_vacio)
+        self.lab_fr1a2.grid(row=5, column=0)
 
     def revisar_fechas(self):
         '''Resvisa y devuelve las fechas extremas de las ausencias'''
@@ -209,6 +234,8 @@ class VentanaPrincipal(tk.Tk):
     def mostrar_menues_tipo(self):
         '''Mostrar en pantalla los radio button
         para seleccionar el tipo de gráfico'''
+        # Separación de las ausencias
+        self.fr_selec_0a.pack()
         # Tipo de gráfico
         self.fr_selec_0b.pack()
         # Limitador de fechas
@@ -307,12 +334,25 @@ class VentanaPrincipal(tk.Tk):
     def mostrar_menu_vista(self):
         '''Mostrar u ocultar el menu de vista
         según el tipo de gráfico'''
-        mostrar = self.var_fr0.get()
-        if mostrar == 0:
+        mostrar = self.var_fr0.get()  # todas, contr o justif
+        if mostrar == 0:  # Ausencias totales
             self.fr_selec_2b.pack()
-        elif mostrar in [1, 2]:
+            self.fr_selec_1b.pack()
+            self.fr_selec_11b.pack()
+        elif mostrar in [1, 2]:  # Ausencias controlables o justificadas
             self.var_fr2.set(0)
             self.fr_selec_2b.pack_forget()
+            self.fr_selec_1b.pack()
+            self.fr_selec_11b.pack()
+
+        tipo = self.var_fr0b.get()  # por tiempo o departamento
+        if tipo == 0:
+            self.fr_selec_1b.pack()
+        elif tipo == 1:  # Ausencias por departamento
+            self.var_fr1.set(0)
+            self.fr_selec_1b.pack_forget()
+            self.var_fr11.set(0)
+            self.fr_selec_11b.pack_forget()
 
     # %% Funciones
 
@@ -364,7 +404,8 @@ class VentanaPrincipal(tk.Tk):
 
     def mostrar_grafico(self):
         '''Junta la información, manda el gráfico y lo muestra'''
-        tipo = self.var_fr0.get()
+        separ = self.var_fr0.get()  # totales, contol o justif
+        tipo = self.var_fr0b.get()
         frec = self.var_fr1.get()
         agrup = self.var_fr11.get()
         vista = self.var_fr2.get()
@@ -375,7 +416,7 @@ class VentanaPrincipal(tk.Tk):
         medidas = (ancho_pc, alto_pc)
 
         figura = ordenar_datos_grafico(
-            tipo, frec, agrup, vista, f_min, f_max, medidas)
+            tipo, separ, frec, agrup, vista, f_min, f_max, medidas)
 
         # Limpiar el frame
         for widget in self.fr_graficos.winfo_children():

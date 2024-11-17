@@ -26,11 +26,11 @@ def abrir_excel(ruta):
 def crear_base():
     conn = sqlite3.connect('Ausencias_SJ.db')
     cur = conn.cursor()
-    
+   
     # Habilitar claves foráneas
     conn.execute("PRAGMA foreign_keys = ON")
 
-        # Crear tabla de agrupadores
+    # Crear tabla de agrupadores
     cur.execute('''CREATE TABLE IF NOT EXISTS agrupadores
                 (id_agr        INTEGER PRIMARY KEY,
                  agrupador     TEXT            NOT NULL
@@ -344,6 +344,7 @@ def sql_con_ausencias(consulta):
     fechas_certificados = cur.fetchall()
     cerrar_bd()
     return fechas_certificados
+
 
 # Función para crear diccionarios de fechas clasificadas
 def crear_dic_fechas(df, tipo_injus):

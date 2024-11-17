@@ -9,14 +9,14 @@ ejecutar análisis.
 import os
 from frontend import VentanaPrincipal
 
-  
+
 def set_working_directory():
     """Set the current working directory to the directory of the script."""
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main():
-
+    '''Fija el directorio de trabajo y activa el programa'''
     set_working_directory()
     app = VentanaPrincipal()  # Crea una instancia de VentanaPrincipal
 
@@ -26,4 +26,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

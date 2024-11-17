@@ -4,32 +4,37 @@ los graficos solicitados en el frontend'''
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from datetime import datetime
+import pandas as pd
 from database_setup import abrir_bd, cerrar_bd
 
 # %% Funcion principal de orden
 
 
-def ordenar_datos_grafico(tipo, frec, agrup, vista, f_min, f_max, medidas):
+def ordenar_datos_grafico(tipo, separ, frec, agrup, vista, f_min, f_max,
+                          medidas):
     '''Esta funcion centraliza la creacion de cualquier grafico
     Llama a las funciones correspondientes segun el grafico
     Output: Grafico creado para pasar a frontend'''
-    # Levantar data entre fechas inidicadas
-    fechas_data = levantar_fechas(f_min, f_max)
-    fechas_tipo = fechas_por_tipo(fechas_data, tipo)
-    fechas_frec_agrup = fechas_por_agrup(fechas_tipo, frec, agrup)
-    fechas_vista = fechas_por_vista(fechas_frec_agrup, vista)
-
+    if tipo == 0:  # Gráficos por tiempo
+        # Levantar data entre fechas inidicadas
+        fechas_data = levantar_fechas(f_min, f_max)
+        fechas_tipo = fechas_por_tipo(fechas_data, separ)
+        fechas_frec_agrup = fechas_por_agrup(fechas_tipo, frec, agrup)
+        fechas_vista = fechas_por_vista(fechas_frec_agrup, vista)
+    elif tipo == 1:  # Gráficos por departamento
+        fechas_dpto = levantar_fechas_dpto(f_min, f_max)
     # Hacer los graficos
-    figura = ordenar_grafico(fechas_vista, tipo, agrup, vista, medidas, frec)
+    figura = ordenar_grafico(fechas_vista, separ, agrup, vista, medidas, frec)
 
     return figura
 
 
-def ordenar_grafico(fechas, tipo, agrup, vista, medidas, frec):
+def ordenar_grafico(fechas, separ, agrup, vista, medidas, frec):
     '''Centraliza los llamados a las funciones que
     hacen cada paso de los graficos'''
     figura_base = preparar_base(medidas)
-    fig_con_data = agregar_datos(figura_base, fechas, tipo)
+    fig_con_data = agregar_datos(figura_base, fechas, separ)
     fig_eje_x = poner_eje_x(fig_con_data, fechas, frec)
     fig_eje_y = poner_eje_y(fig_eje_x, agrup, vista)
     return fig_eje_y[0]
@@ -106,6 +111,62 @@ def fechas_por_vista(fechas, vista):
                                      nro_empleados) * 100
     return fechas
 
+
+def levantar_fechas_dpto(f_min, f_max):
+    '''Devuelve la cantidad de ausencias por departamento'''
+    nro_dptos = listar_dptos()
+    df_ausencias = hacer_df_aus(nro_dptos, f_min, f_max)
+            
+
+
+def listar_dptos():
+    '''Devuelve la cantidad de departamentos de la clínica'''
+    sql = '''SELECT max(id_dep)
+          FROM departamentos'''
+    _, cur = abrir_bd()
+    cur.execute(sql)
+    nro_dptos = cur.fetchone()[0]
+    cerrar_bd()
+    return nro_dptos
+
+
+def hacer_df_aus(nro_dptos, f_min, f_max):
+    '''Devuelve un DataFrame con las fechas de ausencia de cada departamento'''
+    ids = []
+    ausencias = []
+    for id in range(nro_dptos + 1):
+        fechas_crudas_dpto = consultar_fechas_dpto(f_min, f_max, id)
+        ausencias_dpto = 0
+        for cert in fechas_crudas_dpto:
+            fecha_0 = datetime.strptime(cert[0], '%Y-%m-%d')
+            fecha_1 = datetime.strptime(cert[1], '%Y-%m-%d')
+            duracion = (fecha_1 - fecha_0).days + 1
+            ausencias_dpto += duracion
+        ids.append(id)
+        ausencias.append(ausencias_dpto)
+
+    df = pd.DataFrame({
+        'id_dpto': ids,
+        'ausencias_dpto': ausencias
+    })
+    return df
+
+
+def consultar_fechas_dpto(f_min, f_max, dpto):
+    '''Consulta la base sql y devuelve la cantidad de ausencias por
+    departamento en el período indicado'''
+    sql = '''SELECT c.validez_dde, c.validez_hta
+             FROM certificados as c
+             JOIN empleados as e
+             ON c.nro_legajo = e.nro_legajo
+             WHERE c.validez_dde >= ?
+             AND c.validez_hta <= ?
+             AND e.id_dep = ?'''
+    _, cur = abrir_bd()
+    cur.execute(sql, (f_min, f_max, dpto))
+    datos_seq = cur.fetchall()
+    cerrar_bd()
+    return datos_seq
 # %% Hacer graficos
 
 
@@ -115,7 +176,7 @@ def preparar_base(medidas):
     ancho = ancho1 / 100
     alto = alto1 / 100
     fig, ax = plt.subplots(figsize=(ancho, alto))  # en pulgadas
-    fig.subplots_adjust(bottom=0.2)
+    fig.subplots_adjust(bottom=0.3)
     return fig, ax
 
 
