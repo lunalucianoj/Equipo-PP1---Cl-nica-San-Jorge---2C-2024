@@ -70,6 +70,7 @@ class VentanaPrincipal(tk.Tk):
         alto_opciones = alto_pc*0.5
         self.fr_opciones = tk.Frame(self, bg=COLOR_FONDO, height=alto_opciones)
         self.fr_opciones.pack(side="bottom", fill="x")
+        self.fr_opciones.pack_propagate(False)
 
         # Boton para graficar
         self.fr_boton = tk.Frame(self.fr_opciones, bg='azure3')
@@ -85,6 +86,7 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec = tk.Frame(self.fr_opciones, bg=COLOR_FONDO,
                                  height=alto_selec)
         self.fr_selec.pack(fill='both')
+        self.fr_selec.pack_propagate(False)
 
         # Marcos para los menus de seleccion
         # 4 menus consecutivos (0 a 3) de izquierda a derecha.
@@ -114,6 +116,7 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec_11.grid(row=1, column=0, sticky="nsew")
         self.fr_selec_2.grid(row=0, column=2, sticky="nsew")
         self.fr_selec_3.grid(row=0, column=3, sticky="nsew")
+        self.fr_selec_3.rowconfigure(0, weight=1)
 
         # Colocar menues de seleccion (radio button)
         self.selec_tipo_graf()
@@ -183,7 +186,7 @@ class VentanaPrincipal(tk.Tk):
                                         command=self.mostrar_menu_vista,
                                         style='Custom.TRadiobutton')
         self.rb0_fr0b.grid(row=1, column=0, sticky="w")
-        self.rb1_fr0b.grid(row=2, column=0, sticky="w") 
+        self.rb1_fr0b.grid(row=2, column=0, sticky="w")
 
     def limitar_fechas(self):
         '''Agrega un menu en el que se pueden seleccionar las
@@ -204,11 +207,8 @@ class VentanaPrincipal(tk.Tk):
             self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
             year=inicio_default.year, month=inicio_default.month,
             day=inicio_default.day)
-        self.dt_fecha_0.grid(row=1, column=0)
+        self.dt_fecha_0.grid(row=1, column=0, pady=(5, 20))
 
-        tex_vacio = '                                      '
-        self.lab_fr1a1 = tk.Label(self.fr_selec_01a, text=tex_vacio)
-        self.lab_fr1a1.grid(row=2, column=0)
         tex_2 = 'Seleccione las fecha de fin del gráfico:'
         self.lab_fr1a2 = tk.Label(self.fr_selec_01a, text=tex_2,
                                   bg='azure4', font=('Arial', 11))
@@ -217,9 +217,7 @@ class VentanaPrincipal(tk.Tk):
             self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
             year=fin_default.year, month=fin_default.month,
             day=fin_default.day)
-        self.dt_fecha_1.grid(row=4, column=0)
-        self.lab_fr1a2 = tk.Label(self.fr_selec_01a, text=tex_vacio)
-        self.lab_fr1a2.grid(row=5, column=0)
+        self.dt_fecha_1.grid(row=4, column=0, pady=(5, 20))
 
     def revisar_fechas(self):
         '''Resvisa y devuelve las fechas extremas de las ausencias'''
@@ -239,7 +237,7 @@ class VentanaPrincipal(tk.Tk):
         # Tipo de gráfico
         self.fr_selec_0b.pack()
         # Limitador de fechas
-        self.fr_selec_01a.pack(pady=(alto_pc/22, 0))
+        self.fr_selec_01a.pack()
         # Frecuencias
         self.fr_selec_1b.pack()
         # Agrupamiento
