@@ -133,9 +133,9 @@ def actualizar_db():
                 (nro_legajo    INTEGER PRIMARY KEY,
                  nombre        TEXT            NOT NULL,
                  cuil          INT,
+                 id_cat        INT             NOT NULL,
                  id_suc        INT             NOT NULL,
                  id_dep        INT             NOT NULL,
-                 id_cat        INT             NOT NULL,
                  FOREIGN KEY (id_dep) REFERENCES departamentos(id_dep)
                  ON DELETE CASCADE,
                  FOREIGN KEY (id_suc) REFERENCES sucursales(id_suc)
@@ -227,6 +227,7 @@ def agregar_ID(ruta):
         base_df_limpia['Agrupador'])[0]
     return base_df_limpia
 
+
 def reemplazar_id_dpto(ruta):
     empleados = limpieza_db_empleados(ruta)
     abrir_bd()
@@ -237,20 +238,20 @@ def reemplazar_id_dpto(ruta):
     # Crear un diccionario de mapeo entre DEPARTAMENTO y id_dep
     departamento_id_map = dict(zip(departamentos_df['DEPARTAMENTO'],
                                    departamentos_df['id_dep']))
-    
-    # Reemplazar valores en la columna 'Departamento' 
+ 
+    # Reemplazar valores en la columna 'Departamento'
     # del DataFrame 'empleados' con 'id_dep'
     empleados['id_dep'] = empleados['Departamento'].map(departamento_id_map)
 
     # Eliminar la columna original 'Departamento'
-    empleados = empleados.drop(columns=['Departamento'])
+    del empleados['Departamento']
     cerrar_bd()
     return empleados
 
 
 def agregar_ID_empleados(ruta):
     '''Agregar los ID nuevos para poder
-    dividir la tabla a futuro'''
+    dividir la tabla'''
     base_df_limpia = reemplazar_id_dpto(ruta)
     # Agregar ID_suc (ID para cada sucursal)
     base_df_limpia.loc[:, 'ID_Suc'] = pd.factorize(
@@ -392,6 +393,9 @@ def insertar_ausencias(contador_fechas, categoria):
 
 
 def cargar_df_en_db(dataf, tablaSQL):
+    '''Carga un DataFrame en una tabla SQL
+    dataf: la tabla misma
+    tablaSQL: el nombre de la tabla'''
     # Crear placeholders para los valores
     placeholders = ', '.join('?' * len(dataf.columns))
     # Convertir los datos del DataFrame a una lista de tuplas
@@ -415,6 +419,8 @@ def pasar_a_db_empleados(ruta):
     listado_databases = dividir_tabla_empleados(ruta)
     # Borrar la tabla de empleados preexistente de la bd
     for tabla in listado_databases:
+        # Tabla[0] es la tabla misma
+        # Tabla[1] es el nombre de la tabla
         cargar_df_en_db(tabla[0], tabla[1])
 
 

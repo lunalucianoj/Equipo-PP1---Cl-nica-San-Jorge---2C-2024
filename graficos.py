@@ -27,7 +27,7 @@ def ordenar_datos_grafico(tipo, separ, frec, agrup, vista, f_min, f_max,
                                  medidas, frec)
     elif tipo == 1:  # Gráficos por departamento
         ausencias_dpto = levantar_fechas_dpto(f_min, f_max)
-        figura = ordenar_grafico_dpto(ausencias_dpto, medidas)
+        figura = ordenar_grafico_dpto(ausencias_dpto, medidas, separ, vista)
     
     return figura
 
@@ -42,11 +42,11 @@ def ordenar_grafico(fechas, separ, agrup, vista, medidas, frec):
     return fig_eje_y[0]
 
 
-def ordenar_grafico_dpto(aus, medidas):
+def ordenar_grafico_dpto(aus, medidas, separ, vista):
     '''Centraliza las llamadas a funciones para hacer el gráfico
     por departamento'''
     figura_base = preparar_base_dpto(medidas)
-    fig_con_data = agregar_datos_dpto(figura_base, aus)
+    fig_con_data = agregar_datos_dpto(figura_base, aus, separ)
     fig_eje_x = poner_eje_x_dpto(fig_con_data, aus)
     return fig_eje_x[0]
 
@@ -130,8 +130,7 @@ def levantar_fechas_dpto(f_min, f_max):
     nro_dptos = contar_dptos()
     df_ausencias = hacer_df_aus(nro_dptos, f_min, f_max)
     aus_con_nobre_dpto = nombrar_dptos(df_ausencias)
-    aus_ordenadas = ordenar_aus(aus_con_nobre_dpto)
-    return aus_ordenadas
+    return aus_con_nobre_dpto
             
 
 def contar_dptos():
@@ -148,112 +147,95 @@ def contar_dptos():
 def hacer_df_aus(nro_dptos, f_min, f_max):
     '''Devuelve un DataFrame con las fechas de ausencia de cada departamento'''
     ids = []
-    ausencias = []
+    aus_jus = []
+    aus_injus = []
+    aus_incon = []
     # Tipos de ausencia ()
 
     for i in range(nro_dptos + 1):
         # Certificados completamente entre las fechas
-        fechas_crudas_dpto = consultar_fechas_dpto(f_min, f_max, i, tipo)
-        # Certifcados que empiezan antes o terminan después del período
-        dias_extra = consultar_fecha_extra(f_min, f_max, i)
-        ausencias_dpto = 0
-        for cert in fechas_crudas_dpto:
-            fecha_0 = datetime.strptime(cert[0], '%Y-%m-%d')
-            fecha_1 = datetime.strptime(cert[1], '%Y-%m-%d')
-            duracion = (fecha_1 - fecha_0).days + 1
-            ausencias_dpto += duracion
+        aus_dpto = consultar_fechas_dpto(f_min, f_max, i)
+        aus_jus.append(aus_dpto['jus'])
+        aus_injus.append(aus_dpto['injus'])
+        aus_incon.append(aus_dpto['incon'])
         ids.append(i)
-        ausencias.append((ausencias_dpto+dias_extra))
 
-    df = pd.DataFrame({
+    data = {
         'id_dpto': ids,
-        'ausencias_dpto': ausencias
-    })
+        'justificadas': aus_jus,
+        'injustificadas': aus_injus,
+        'incontrolables': aus_incon
+        }
+    df = pd.DataFrame(data)
     return df
 
 
-def consultar_fechas_dpto(f_min, f_max, dpto, tipo):
+def consultar_fechas_dpto(f_min, f_max, dpto):
     '''Consulta la base sql y devuelve la cantidad de ausencias por
-    departamento en el período indicado
-    tipo es tipo de ausencia'''
-    sql = '''SELECT c.validez_dde, c.validez_hta
+    departamento en el período indicado separadas por tipo de
+    ausencias
+    Outpt: diccionario'''
+    sql = '''SELECT c.validez_dde AS desde, c.validez_hta AS hasta,
+             t.id_agr, t.id_tc
              FROM certificados as c
-             JOIN empleados as e
-             ON c.nro_legajo = e.nro_legajo
-             WHERE c.validez_dde >= ?
-             AND c.validez_hta <= ?
+             JOIN empleados as e ON c.nro_legajo = e.nro_legajo
+             JOIN tcd AS t ON c.id_tc = t.id_tc
+             WHERE ((c.validez_dde >= ? AND c.validez_dde <= ?)
+             OR (c.validez_hta >= ? AND c.validez_hta <= ?)
+             OR (c.validez_dde <= ? AND c.validez_hta >= ?))
              AND e.id_dep = ?
-             AND '''
+             AND (t.id_agr = 0
+             OR t.id_agr = 4)'''
     _, cur = abrir_bd()
-    cur.execute(sql, (f_min, f_max, dpto))
+    cur.execute(sql, (f_min, f_max, f_min, f_max, f_min, f_max, dpto))
     datos_seq = cur.fetchall()
     cerrar_bd()
-    return datos_seq
+    datos_corr = corregir_lim(datos_seq, f_min, f_max)
+    ausencias_dpto = ausencias_tipo(datos_corr)
+    return ausencias_dpto
 
 
-def consultar_fecha_extra(f_min, f_max, dpto):
-    '''Consulta la base sql y devuelve la cantidad de ausencias para
-    certificados que estén parcialmente entre las fechas indicadas'''
-    # Solo los certificados con inicio entre las fechas inidicadas
-    # y fin después de la fecha máxima
-    sql_0 = '''SELECT c.validez_dde, c.validez_hta
-             FROM certificados as c
-             JOIN empleados as e
-             ON c.nro_legajo = e.nro_legajo
-             WHERE c.validez_dde >= ?
-             AND c.validez_dde <= ?
-             AND c.validez_hta > ?
-             AND e.id_dep = ?'''
-    _, cur = abrir_bd()
-    cur.execute(sql_0, (f_min, f_max, f_max, dpto))
-    cert_inicio = cur.fetchall()
-    # Descontar dias fuera de rango
-    dias_inicio = descontar_ausencias(cert_inicio, f_min, f_max, 0)
-
-    # Solo los certificados con fin entre las fechas indicadas
-    # e inicio antes de la fecha mínima
-    sql_1 = '''SELECT c.validez_dde, c.validez_hta
-             FROM certificados as c
-             JOIN empleados as e
-             ON c.nro_legajo = e.nro_legajo
-             WHERE c.validez_dde < ?
-             AND c.validez_hta >= ?
-             AND c.validez_hta <= ?
-             AND e.id_dep = ?'''
-    cur.execute(sql_1, (f_min, f_min, f_max, dpto))
-    cert_fin = cur.fetchall()
-    cerrar_bd()
-    # Descontar dias fuera de rango
-    dias_fin = descontar_ausencias(cert_fin, f_min, f_max, 1)
-
-    dias_total = dias_inicio + dias_fin
-    return dias_total
-
-
-def descontar_ausencias(cert, f_min, f_max, tipo):
+def corregir_lim(certificados, f_min, f_max):
     '''En los certificados con fechas de inicio previas al
-    período (tipo = 1) reemplaza la fecha de inicio por f_min.
-    Lo mismo para fechas de finalización posteriores (tipo = 0)'''
-    dias_aus = 0
+    período reemplaza la fecha de inicio por f_min.
+    Lo mismo para fechas de finalización posteriores'''
+    certificados_mod = []
+    for cert in certificados:
+        cert = list(cert)
+        # Convertir las fechas a datetime
+        inicio = datetime.strptime(cert[0], '%Y-%m-%d').date()
+        fin = datetime.strptime(cert[1], '%Y-%m-%d').date()
 
-    for inicio, fin in cert:
-        # Convertir las fechas de string a datetime.date si es necesario
-        if isinstance(inicio, str):
-            inicio = datetime.strptime(inicio, '%Y-%m-%d').date()
-        if isinstance(fin, str):
-            fin = datetime.strptime(fin, '%Y-%m-%d').date()
-
-        if tipo == 0:
+        if inicio < f_min:
+            # Inicio provio al rango
+            inicio = f_min
+        if fin > f_max:
             # Fin posterior al rango
             fin = f_max
-        elif tipo == 1:
-            # Inicio previo al rango
-            inicio = f_min
-        rango_dias = (fin - inicio).days
 
-        # Añadir la nueva tupla a la lista
-        dias_aus += rango_dias
+        cert[0] = inicio
+        cert[1] = fin
+        certificados_mod.append(cert)
+    return certificados_mod
 
+
+def ausencias_tipo(datos):
+    '''Devuelve la cantidad de ausencias por tipo de certificado'''
+    ausencias = {'jus': 0, 'injus': 0, 'incon': 0}
+    for cert in datos:
+        dias = contar_ausencias(cert)
+        if cert[3] == 29:  # Injustificadas
+            ausencias['injus'] += dias
+        elif cert[2] == 0 and cert[3] != 29:  # Justificadas
+            ausencias['jus'] += dias         
+        elif cert[2] == 4:  # Incontrolable
+            ausencias['incon'] += dias
+    return ausencias
+
+
+def contar_ausencias(cert):
+    '''Cuenta las ausencias de cada certificado'''
+    dias_aus = (cert[1] - cert[0]).days + 1
     return dias_aus
 
 
@@ -275,11 +257,6 @@ def nombrar_dptos(df_ausencias):
     del df_ausencias['id_dpto']
     return df_ausencias
 
-
-def ordenar_aus(df_aus):
-    '''Ordena los departamentos por cantidad de ausencias'''
-    df_aus = df_aus.sort_values(by='ausencias_dpto', ascending=False)
-    return df_aus
 # %% Hacer graficos
 
 
@@ -388,10 +365,24 @@ def preparar_base_dpto(medidas):
     return fig, eje
 
 
-def agregar_datos_dpto(figura_base, aus):
+def agregar_datos_dpto(figura_base, aus, separ):
     '''Agrega los datos de ausencias por departamento'''
     fig, eje = figura_base
-    eje.bar(aus['departamento'], aus['ausencias_dpto'])
+    if separ == 0:  # Ausencias totales:
+        aus['aus_totales'] = aus['justificadas'] +\
+            aus['injustificadas'] + aus['incontrolables']
+        aus_ord = aus.sort_values(by='aus_totales', ascending=False)
+        eje.bar(aus_ord['departamento'], aus_ord['aus_totales'])
+    elif separ == 1:  # Controlables vs no
+        aus['aus_control'] = aus['justificadas'] +\
+            aus['injustificadas']
+        aus_ord = aus.sort_values(by='aus_control', ascending=False)
+        eje.bar(aus_ord['departamento'], aus_ord['aus_control'])
+        eje.bar(aus_ord['departamento'], aus_ord['incontrolables'])
+    elif separ == 2:  # Justificadas vs no
+        eje.bar(aus['departamento'], aus['justificadas'])
+        eje.bar(aus['departamento'], aus['injustificadas'])
+    
     return fig, eje
 
 

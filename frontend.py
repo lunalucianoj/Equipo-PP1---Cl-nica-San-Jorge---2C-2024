@@ -195,29 +195,34 @@ class VentanaPrincipal(tk.Tk):
         self.fr_selec_01a = tk.Frame(self.fr_selec_3)
         self.fr_selec_01a.grid(row=0, column=0)
 
-        fechas_data = self.revisar_fechas()
-        inicio_default = datetime.strptime(fechas_data[0], '%Y-%m-%d')
-        fin_default = datetime.strptime(fechas_data[1], '%Y-%m-%d')
-
         tex_1 = 'Seleccione las fecha de inicio del gráfico:'
         self.lab_fr1a = tk.Label(self.fr_selec_01a, text=tex_1,
                                  bg='azure4', font=('Arial', 11))
         self.lab_fr1a.grid(row=0, column=0)
         self.dt_fecha_0 = DateEntry(
-            self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
-            year=inicio_default.year, month=inicio_default.month,
-            day=inicio_default.day)
+            self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR')
         self.dt_fecha_0.grid(row=1, column=0, pady=(5, 20))
+        base_cert = utils.verif_base_datos('cert')
 
         tex_2 = 'Seleccione las fecha de fin del gráfico:'
         self.lab_fr1a2 = tk.Label(self.fr_selec_01a, text=tex_2,
                                   bg='azure4', font=('Arial', 11))
         self.lab_fr1a2.grid(row=3, column=0, sticky="ew")
         self.dt_fecha_1 = DateEntry(
-            self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR',
-            year=fin_default.year, month=fin_default.month,
-            day=fin_default.day)
+            self.fr_selec_01a, date_pattern='dd/mm/yyyy', locale='es_AR')
         self.dt_fecha_1.grid(row=4, column=0, pady=(5, 20))
+
+        # Solo setear las fechas si hay una base de ausencias
+        if base_cert == 'base_1':
+            fechas_data = self.revisar_fechas()
+            inicio_default = datetime.strptime(fechas_data[0], '%Y-%m-%d')
+            fin_default = datetime.strptime(fechas_data[1], '%Y-%m-%d')
+            self.dt_fecha_0.set_date(inicio_default)
+            self.dt_fecha_1.set_date(fin_default)
+
+
+
+
 
     def revisar_fechas(self):
         '''Resvisa y devuelve las fechas extremas de las ausencias'''
