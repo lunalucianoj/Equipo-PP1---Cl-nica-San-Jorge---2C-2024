@@ -59,6 +59,8 @@ class VentanaPrincipal(tk.Tk):
         # Configurar el frame para evitar que el contenido se expanda más
         # allá de su tamaño
         self.fr_graficos.pack_propagate(False)
+        # Espacio para el futuro gráfico
+        self.canvas = None
         # Indicar que falta base de datos
         self.la_falta_excel = tk.Label(
             self.fr_graficos, text='Por favor cargue la tabla de Excel con' +
@@ -351,8 +353,10 @@ class VentanaPrincipal(tk.Tk):
         tipo = self.var_fr0b.get()  # por tiempo o departamento
         if tipo == 0:
             self.fr_selec_1b.pack()
+            self.rb1_fr2.config(text='Porcentuales')
         elif tipo == 1:  # Ausencias por departamento
             self.var_fr1.set(0)
+            self.rb1_fr2.config(text='Por empleado')
             self.fr_selec_1b.pack_forget()
             self.var_fr11.set(0)
             self.fr_selec_11b.pack_forget()
@@ -403,6 +407,12 @@ class VentanaPrincipal(tk.Tk):
         self.menu_base.add_cascade(label='Creditos', menu=self.menu_creditos)
         self.config(menu=self.menu_base)
 
+        # Guardar gráfico
+        self.menu_guardar = tk.Menu(self.menu_base, tearoff=0)
+        self.menu_guardar.add_command(
+            label='Guardar gráfico', command=self.guardar_grafico)
+        self.menu_base.add_cascade(label='Guardar', menu=self.menu_guardar)
+
     # %% Funciones de graficos
 
     def mostrar_grafico(self):
@@ -427,9 +437,9 @@ class VentanaPrincipal(tk.Tk):
         plt.close('all')
 
         # Convertir figura a un Canvas de Tkinter y empaquetarlo en el frame
-        canvas = FigureCanvasTkAgg(figura, master=self.fr_graficos)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
+        self.canvas = FigureCanvasTkAgg(figura, master=self.fr_graficos)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def set_icon(self):
         '''Cargar el icono de la parte superior izquierda'''
@@ -457,6 +467,27 @@ class VentanaPrincipal(tk.Tk):
                                bg='azure4')
         lb_creditos.pack(pady=10)
 
+    def guardar_grafico(self):
+        '''Guardar el grafico en un archivo jpg o png'''
+        # Revisar si hay grafico que guardar
+        if self.canvas:  # Si hay un gráfico creado
+            figura = self.canvas.figure
+            # Tipos de extensiones para el archivo
+            filetypes = [("PNG files", "*.png"),
+                         ("JPEG files", "*.jpg")
+                         ]
+            filepath = fd.asksaveasfilename(
+                defaultextension=".png",
+                filetypes=filetypes,
+                title="Guardar gráfico"
+                )
+            if filepath:  # Si se seleccionó un destino
+                figura.savefig(filepath)
+                tk.messagebox.showinfo('Guardar Gráfico',
+                                       'Gráfico guardado exitosamente.')
+        else:  # Si no hay un gráfico creado
+            tk.messagebox.showerror('Sin gráficos',
+                                    'No hay gráficos para guardar')
 # %% Funciones de labels
 
     def cartel_area_graf(self):

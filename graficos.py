@@ -1,11 +1,10 @@
 '''Este modulo contiene las funciones para llamar a la base de datos y crear
 los graficos solicitados en el frontend'''
 
+from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
-from datetime import datetime, date
-import pandas as pd
 from database_setup import abrir_bd, cerrar_bd
 
 # %% Funcion principal de orden
@@ -46,9 +45,10 @@ def ordenar_grafico_dpto(aus, medidas, separ, vista):
     '''Centraliza las llamadas a funciones para hacer el gráfico
     por departamento'''
     figura_base = preparar_base_dpto(medidas)
-    fig_con_data = agregar_datos_dpto(figura_base, aus, separ)
+    fig_con_data = agregar_datos_dpto(figura_base, aus, separ, vista)
     fig_eje_x = poner_eje_x_dpto(fig_con_data, aus)
-    return fig_eje_x[0]
+    fig_eje_y = poner_eje_y_dpto(fig_eje_x, vista)
+    return fig_eje_y[0]
 
 
 # %% Organizar datos para graficar
@@ -270,22 +270,22 @@ def preparar_base(medidas):
     return fig, ax
 
 
-def agregar_datos(figura_base, fechas, tipo):
+def agregar_datos(figura_base, fechas, separ):
     '''Agrega los datos a la figura base'''
     fig, eje = figura_base
     eje_x = fechas['Fecha']
-    if tipo == 0:  # Ausencias totales
+    if separ == 0:  # Ausencias totales
         eje.plot(eje_x, fechas['total_ausencias'],
                  label='Ausencias totales',
                  marker=None, linestyle='-')
-    elif tipo == 1:  # controlables vs no
+    elif separ == 1:  # controlables vs no
         eje.plot(eje_x, fechas['controlables'],
                  label='Ausencias controlables',
                  marker=None, linestyle='-')
         eje.plot(eje_x, fechas['no_controlable'],
                  label='Ausencias no controlables',
                  marker=None, linestyle='-')
-    elif tipo == 2:  # justificadas vs no
+    elif separ == 2:  # justificadas vs no
         eje.plot(eje_x, fechas['justificado'],
                  label='Ausencias justificadas',
                  marker=None, linestyle='-')
@@ -362,26 +362,48 @@ def preparar_base_dpto(medidas):
     ancho = ancho1 / 100
     alto = alto1 / 100
     fig, eje = plt.subplots(figsize=(ancho, alto))
+    fig.subplots_adjust(bottom=0.3)  # Espacio para eje x
     return fig, eje
 
 
-def agregar_datos_dpto(figura_base, aus, separ):
+def agregar_datos_dpto(figura_base, aus, separ, vista):
     '''Agrega los datos de ausencias por departamento'''
     fig, eje = figura_base
-    if separ == 0:  # Ausencias totales:
+    if vista == 1:  # Porcentaje de ausencias totales
+        datos = aus_porc_dpto(aus)
+        # Ordenar por porcentaje de ausencias
+        aus_ord = datos.sort_values(by='porc_dpto', ascending=False)
+        # Mostrar solo departamentos con ausencias
+        aus_fil = aus_ord[aus_ord['aus_totales'] > 0]
+        eje.bar(aus_fil['departamento'], aus_fil['porc_dpto'],
+                label='Ausencias por empleado')
+
+    elif separ == 0:  # Ausencias totales:
         aus['aus_totales'] = aus['justificadas'] +\
             aus['injustificadas'] + aus['incontrolables']
+        # Ordenar por ausencias totales
         aus_ord = aus.sort_values(by='aus_totales', ascending=False)
-        eje.bar(aus_ord['departamento'], aus_ord['aus_totales'])
+        # Mostrar solo departamentos con ausencias
+        aus_fil = aus_ord[aus_ord['aus_totales'] > 0]
+        eje.bar(aus_fil['departamento'], aus_fil['aus_totales'],
+                label='Ausencias totales')
+
     elif separ == 1:  # Controlables vs no
         aus['aus_control'] = aus['justificadas'] +\
             aus['injustificadas']
         aus_ord = aus.sort_values(by='aus_control', ascending=False)
-        eje.bar(aus_ord['departamento'], aus_ord['aus_control'])
-        eje.bar(aus_ord['departamento'], aus_ord['incontrolables'])
+        aus_fil = aus_ord[(aus_ord['aus_control'] > 0) |
+                          (aus_ord['incontrolables'] > 0)]
+        eje.bar(aus_ord['departamento'], aus_ord['aus_control'],
+                label='Ausencias controlables')
+        eje.bar(aus_ord['departamento'], aus_ord['incontrolables'],
+                label='Ausencias no controlables')
+
     elif separ == 2:  # Justificadas vs no
-        eje.bar(aus['departamento'], aus['justificadas'])
-        eje.bar(aus['departamento'], aus['injustificadas'])
+        eje.bar(aus['departamento'], aus['justificadas'],
+                label='Ausencias justificadas')
+        eje.bar(aus['departamento'], aus['injustificadas'],
+                label='Ausencias injustificadas')
     
     return fig, eje
 
@@ -390,5 +412,50 @@ def poner_eje_x_dpto(fig_con_data, aus):
     '''Fija el título y el eje X del gráfico'''
     fig, eje = fig_con_data
     eje.set_title('Ausencias por Departamento')
+    eje.set_xlabel('Departamento')
+    eje.tick_params(axis='x', rotation=45)
+    for label in eje.get_xticklabels():
+        label.set_ha('right')
+        label.set_fontsize(8)
+    eje.legend()
+    return fig, eje
+
+
+def poner_eje_y_dpto(figura, vista):
+    '''Fija el título del eje Y y la forma de
+    mostrar los valores para los gráficos de barras de dpto'''
+    fig, eje = figura
+    if vista == 0:  # Ausencias totales
+        eje.set_ylabel('Ausencias totales')
+    elif vista == 1:  # Porcentaje de ausencias
+        eje.yaxis.set_major_formatter(mtick.PercentFormatter())
+        eje.set_ylabel('Porcentaje de ausencias totales')
 
     return fig, eje
+
+
+def aus_porc_dpto(aus):
+    '''Consulta la cantidad de empleados por departamento
+    y calcula el porcentaje de ausencias totales por dpto'''
+    sql_e = '''SELECT d.DEPARTAMENTO, COUNT(e.nro_legajo) AS nro_empleados
+             FROM departamentos d
+             JOIN empleados e
+             ON d.id_dep = e.id_dep
+             GROUP BY e.id_dep'''
+    _, cur = abrir_bd()
+    cur.execute(sql_e)
+    conteo_empleados = cur.fetchall()
+    cerrar_bd()
+    # Crear un diccionario de mapeo de empleados por departamento
+    empleados_por_dpto = {}
+    for departamento in conteo_empleados:
+        empleados_por_dpto[departamento[0]] = departamento[1]
+
+    # Agregar a aus la columna nro_empleados con la cantidad de
+    # empleados en el departamento correspondiente
+    aus['nro_empleados'] = aus['departamento'].map(empleados_por_dpto)
+    # Calcular el porcentaje de ausencias totales por dpto
+    aus['aus_totales'] = aus['justificadas'] +\
+        aus['injustificadas'] + aus['incontrolables']
+    aus['porc_dpto'] = aus['aus_totales'] / aus['nro_empleados']
+    return aus
